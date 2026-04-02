@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Scoundrel – a solo dungeon-crawl card game playable entirely in the browser." />
+    <title>Scoundrel</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+
+    <!-- ═══════════════════════════════════════════════
+         SKIP LINK
+    ═══════════════════════════════════════════════ -->
+    <a href="#room" class="skip-link">Skip to game</a>
+
+    <!-- ═══════════════════════════════════════════════
+         APP WRAPPER
+    ═══════════════════════════════════════════════ -->
+    <div id="app" class="app">
+
+      <!-- ─────────────────────────────────────────
+           HEADER / HUD
+      ───────────────────────────────────────── -->
+      <header class="hud" role="banner" aria-label="Game status">
+
+        <!-- Health -->
+        <div class="hud-block hud-health" aria-label="Health">
+          <span class="hud-label">Health</span>
+          <div class="health-bar-track" role="progressbar"
+               aria-valuemin="0" aria-valuemax="20"
+               aria-valuenow="20" aria-label="Health bar"
+               id="health-bar-track">
+            <div class="health-bar-fill" id="health-bar-fill"></div>
+          </div>
+          <span class="hud-value" id="health-value" aria-live="polite">20 / 20</span>
+        </div>
+
+        <!-- Weapon -->
+        <div class="hud-block hud-weapon" aria-label="Equipped weapon">
+          <span class="hud-label">Weapon</span>
+          <div class="weapon-display" id="weapon-display">
+            <span class="weapon-suit" id="weapon-suit" aria-hidden="true">♦</span>
+            <span class="weapon-value" id="weapon-value">—</span>
+          </div>
+          <span class="hud-sub" id="weapon-last-label">Last defeated:</span>
+          <span class="hud-sub hud-sub-value" id="weapon-last-value" aria-live="polite">—</span>
+        </div>
+
+        <!-- Turn & Deck info -->
+        <div class="hud-block hud-info">
+          <dl class="hud-stats">
+            <div class="stat-row">
+              <dt>Turn</dt>
+              <dd id="turn-counter" aria-live="polite">1</dd>
+            </div>
+            <div class="stat-row">
+              <dt>Deck</dt>
+              <dd id="deck-count" aria-live="polite">44</dd>
+            </div>
+            <div class="stat-row">
+              <dt>Discard</dt>
+              <dd id="discard-count" aria-live="polite">0</dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Controls -->
+        <div class="hud-block hud-controls">
+          <button class="btn btn-primary" id="btn-new-game"
+                  aria-label="Start a new game">New Game</button>
+          <button class="btn btn-secondary" id="btn-restart"
+                  aria-label="Restart from saved state">Restart</button>
+          <button class="btn btn-avoid" id="btn-avoid"
+                  aria-label="Avoid this room – place all 4 cards at the bottom of the deck"
+                  aria-disabled="false">
+            Avoid
+            <span class="avoid-badge" id="avoid-badge" aria-hidden="true" hidden>✗</span>
+          </button>
+          <button class="btn btn-icon" id="btn-help"
+                  aria-label="Open rules and help" aria-haspopup="dialog">
+            <span aria-hidden="true">?</span>
+          </button>
+        </div>
+
+      </header>
+
+      <!-- ─────────────────────────────────────────
+           MAIN CONTENT
+      ───────────────────────────────────────── -->
+      <main id="main-content">
+
+        <!-- Room -->
+        <section id="room" class="room-section" aria-label="Current room">
+          <h2 class="sr-only">Room</h2>
+
+          <!-- Avoid indicator -->
+          <p class="avoid-notice" id="avoid-notice" aria-live="assertive" hidden>
+            Avoid used — you must face the next room.
+          </p>
+
+          <!-- Card grid -->
+          <div class="room-grid" id="room-grid"
+               role="list" aria-label="Room cards">
+            <!-- Cards injected by JS: 4 × .card-slot -->
+          </div>
+
+          <!-- Potion-used notice -->
+          <p class="potion-notice" id="potion-notice" aria-live="polite" hidden>
+            Potion already used this room — further potions are discarded.
+          </p>
+        </section>
+
+        <!-- Action log -->
+        <section class="log-section" aria-label="Action log">
+          <h2 class="log-heading">Log</h2>
+          <div class="log-scroll" id="log-scroll" role="log"
+               aria-live="polite" aria-atomic="false"
+               aria-relevant="additions" tabindex="0">
+            <ul class="log-list" id="log-list">
+              <li class="log-entry log-system">Welcome to Scoundrel. Press <strong>New Game</strong> to begin.</li>
+            </ul>
+          </div>
+        </section>
+
+      </main>
+
+    </div><!-- /#app -->
+
+    <!-- ═══════════════════════════════════════════════
+         END-GAME OVERLAY
+    ═══════════════════════════════════════════════ -->
+    <div class="overlay" id="overlay-endgame"
+         role="dialog" aria-modal="true"
+         aria-labelledby="endgame-title"
+         aria-describedby="endgame-desc"
+         hidden>
+      <div class="dialog-box dialog-box--endgame">
+        <h2 id="endgame-title" class="dialog-title">—</h2>
+        <p  id="endgame-desc"  class="dialog-desc">—</p>
+        <div class="dialog-score">
+          <span class="score-label">Score</span>
+          <span class="score-value" id="endgame-score">0</span>
+        </div>
+        <div class="dialog-actions">
+          <button class="btn btn-primary" id="btn-endgame-new">New Game</button>
+          <button class="btn btn-secondary" id="btn-endgame-restart">Restart</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         HELP MODAL
+    ═══════════════════════════════════════════════ -->
+    <div class="overlay" id="overlay-help"
+         role="dialog" aria-modal="true"
+         aria-labelledby="help-title"
+         hidden>
+      <div class="dialog-box dialog-box--help">
+        <div class="dialog-header">
+          <h2 id="help-title" class="dialog-title">How to Play Scoundrel</h2>
+          <button class="btn btn-icon btn-close" id="btn-help-close"
+                  aria-label="Close help">✕</button>
+        </div>
+
+        <div class="help-body" tabindex="0">
+
+          <h3>The Deck</h3>
+          <p>44 cards remain after removing Jokers, red face cards, and red Aces:</p>
+          <ul>
+            <li><strong>Monsters</strong> ♣ ♠ 2–A (26 cards) — deal damage</li>
+            <li><strong>Weapons</strong>  ♦ 2–10 (9 cards) — reduce damage</li>
+            <li><strong>Potions</strong>  ♥ 2–10 (9 cards) — restore health</li>
+          </ul>
+          <p>Your health starts at <strong>20</strong> and cannot exceed 20.</p>
+
+          <h3>Each Turn — The Room</h3>
+          <p>Four cards are revealed. You must either <strong>Avoid</strong> or <strong>Face</strong> the room.</p>
+
+          <h4>Avoid</h4>
+          <p>All 4 cards go to the bottom of the deck. <em>You cannot avoid two rooms in a row.</em></p>
+
+          <h4>Face the Room</h4>
+          <p>Choose and resolve exactly <strong>3</strong> of the 4 cards in any order.
+             The un-chosen card carries forward into the next room as card #1.</p>
+
+          <h3>Resolving Cards</h3>
+
+          <h4>Potion ♥</h4>
+          <p>Heal by the card's value (capped at 20).
+             <em>Only one potion per room heals you</em> — extras are discarded.</p>
+
+          <h4>Weapon ♦</h4>
+          <p>Equip it: your old weapon (and its defeated-monster stack) is discarded.
+             The weapon's "last defeated" resets to <em>none</em>.</p>
+
+          <h4>Monster ♣ / ♠</h4>
+          <ul>
+            <li><strong>Bare-handed:</strong> take damage equal to the monster's value.</li>
+            <li><strong>With weapon:</strong> damage = max(0, monster − weapon).
+              <br>The weapon can only be used if monster value ≤ last defeated monster's value
+              (or if no monster has been defeated yet).
+              <br><em>Example:</em> weapon ♦7 defeats ♣9 (damage 2), then can fight ♣9 or lower.
+              Fighting ♠J bare-handed after that still costs 11 hp.</li>
+          </ul>
+
+          <h3>Winning &amp; Losing</h3>
+          <ul>
+            <li><strong>Win</strong> — clear the dungeon deck. Score = remaining health.</li>
+            <li><strong>Lose</strong> — health reaches 0. Score = negative sum of remaining monster values.</li>
+          </ul>
+
+          <h3>Keyboard Controls</h3>
+          <table class="help-table">
+            <thead><tr><th>Key</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td>N</td><td>New Game</td></tr>
+              <tr><td>A</td><td>Avoid Room</td></tr>
+              <tr><td>1 – 4</td><td>Select card in slot</td></tr>
+              <tr><td>H / ?</td><td>Toggle Help</td></tr>
+              <tr><td>Esc</td><td>Close overlay</td></tr>
+            </tbody>
+          </table>
+
+        </div><!-- /.help-body -->
+      </div><!-- /.dialog-box -->
+    </div><!-- /#overlay-help -->
+
+    <!-- ═══════════════════════════════════════════════
+         SCRIPTS
+    ═══════════════════════════════════════════════ -->
+    <script type="module" src="js/main.js"></script>
+
+  </body>
+</html>

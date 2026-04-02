@@ -580,6 +580,30 @@ table {
   opacity:   0.9;
 }
 
+/* Carried-forward badge (shown on the front face of the carried card) */
+.carried-badge {
+  position:       absolute;
+  top:            var(--sp-2);
+  right:          var(--sp-2);
+  background:     var(--clr-accent-glow);
+  border:         1px solid var(--clr-accent-dim);
+  border-radius:  var(--radius-pill);
+  color:          var(--clr-accent);
+  font-size:      var(--fs-xs);
+  font-weight:    700;
+  padding:        1px 5px;
+  pointer-events: none;
+  white-space:    nowrap;
+}
+
+/* Empty slot placeholder */
+.card-slot--empty {
+  background:    var(--clr-surface-2);
+  border:        2px dashed var(--clr-border);
+  border-radius: var(--radius-lg);
+  opacity:       0.35;
+}
+
 /* Slot number badge */
 .card-slot-number {
   position:     absolute;

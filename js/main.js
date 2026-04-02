@@ -28,6 +28,9 @@ const CFG = Object.freeze({
     STORAGE_KEY: 'scoundrel_v1',
 });
 
+// True only during drawRoom() so renderRoom knows to start cards face-down
+var _isNewDeal = false;
+
 function freshState() {
     return {
         health:              CFG.MAX_HEALTH,
@@ -53,6 +56,36 @@ let gs = freshState();
 ═══════════════════════════════════════════════════════════════ */
 
 const RANK_DISPLAY = v => ({ 11: 'J', 12: 'Q', 13: 'K', 14: 'A' }[v] ?? String(v));
+
+/**
+ * Returns the relative path to the background image for a given card.
+ *
+ * Mapping rules:
+ *   ♥  (potion)  → heart.jpg  (all values)
+ *   ♣  (monster) → club-1.jpg  (2–5) | club-2.jpg  (6–10) | club-3.jpg  (J/Q/K/A = 11–14)
+ *   ♠  (monster) → spade-1.png (2–5) | spade-2.jpg (6–10) | spade-3.jpg (11–14)
+ *   ♦  (weapon)  → diamond-1.jpg (2–4) | diamond-2.jpg (5–7) | diamond-3.jpg (8–10)
+ */
+function getCardImage(card) {
+    var base = 'assets/images.jpg/';
+    var v    = card.value;
+    switch (card.suit) {
+        case '\u2665': return base + 'heart.jpg';
+        case '\u2663':
+            if (v <= 5)  return base + 'club-1.jpg';
+            if (v <= 10) return base + 'club-2.jpg';
+            return base + 'club-3.jpg';
+        case '\u2660':
+            if (v <= 5)  return base + 'spade-1.png';
+            if (v <= 10) return base + 'spade-2.jpg';
+            return base + 'spade-3.jpg';
+        case '\u2666':
+            if (v <= 4)  return base + 'diamond-1.jpg';
+            if (v <= 7)  return base + 'diamond-2.jpg';
+            return base + 'diamond-3.jpg';
+    }
+    return '';
+}
 
 function createDeck() {
     const cards = [];
@@ -120,11 +153,16 @@ function drawRoom() {
     gs.resolvedThisRoom   = 0;
     gs.turnCount++;
     saveGame();
-    render();
 
+    // Mark as new deal so renderRoom starts cards face-down (for flip animation)
+    _isNewDeal = true;
+    render();
+    _isNewDeal = false;
+
+    // Animate flip for NON-carried new cards only
     requestAnimationFrame(function() {
-        document.querySelectorAll('#room-grid .card-slot:not(.is-flipped)').forEach(function(slot, i) {
-            setTimeout(function() { slot.classList.add('is-flipped'); }, i * 80);
+        document.querySelectorAll('#room-grid .card-slot.is-new-deal').forEach(function(slot, i) {
+            setTimeout(function() { slot.classList.add('is-flipped'); }, i * 80 + 40);
         });
     });
 }
@@ -217,13 +255,22 @@ function resolveCard(cardIndex) {
 
     log(message, logClass);
     checkEndGame();
-
-    if (!gs.isGameOver && gs.room.length === 1 && gs.resolvedThisRoom === CFG.ROOM_SIZE - 1) {
-        setTimeout(drawRoom, 350);
-    }
-
     saveGame();
-    render();
+
+    // When the 3rd card of the room has been resolved, exactly 1 card remains
+    // (the carried card). Call drawRoom() after a short pause so the player sees
+    // it before the next room is dealt. Skip the intermediate render() here —
+    // drawRoom() will do a full render itself, preventing the "cards disappear
+    // then reappear" cycle.
+    var nextRoomPending = !gs.isGameOver
+        && gs.room.length === 1
+        && gs.resolvedThisRoom === CFG.ROOM_SIZE - 1;
+
+    if (nextRoomPending) {
+        setTimeout(drawRoom, 400);
+    } else {
+        render();
+    }
 }
 
 
@@ -397,9 +444,19 @@ function createCardElement(card, index) {
 
     var ariaLabel = typeLabel + ' ' + suit + rank + (tipText ? ': ' + tipText : '') + '. Press to resolve.';
 
+    var imgSrc = getCardImage(card);
+
     var slot = document.createElement('li');
+    // During a new deal: non-carried cards start face-down (is-new-deal, no is-flipped yet).
+    // Mid-room (player resolving cards): all cards already visible → add is-flipped immediately.
     var classes = ['card-slot', 'card-slot--' + card.type, 'is-dealing'];
-    if (isCarried) classes.push('is-carried', 'is-flipped');
+    if (isCarried) {
+        classes.push('is-carried', 'is-flipped');
+    } else if (_isNewDeal) {
+        classes.push('is-new-deal'); // RAF in drawRoom() will add is-flipped with stagger
+    } else {
+        classes.push('is-flipped'); // already visible mid-room, show face-up
+    }
     slot.className = classes.join(' ');
     slot.setAttribute('role', 'listitem');
     slot.setAttribute('aria-label', ariaLabel);
@@ -407,13 +464,16 @@ function createCardElement(card, index) {
     var carriedBadge = isCarried ? '<span class="carried-badge" aria-hidden="true">\u25c8 carried</span>' : '';
     var damageTip    = tipText   ? '<span class="card-damage-tip" aria-hidden="true">' + tipText + '</span>' : '';
 
+    var imgStyle = imgSrc ? ' style="background-image:url(\'' + imgSrc + '\')"' : '';
+
     slot.innerHTML =
         '<span class="card-slot-number" aria-hidden="true">' + (index + 1) + '</span>' +
         '<div class="card-inner">' +
           '<div class="card-face card-back" aria-hidden="true"></div>' +
           '<button class="card-face card-front" tabindex="0"' +
                   ' aria-label="' + ariaLabel + '"' +
-                  ' data-index="' + index + '">' +
+                  ' data-index="' + index + '"' +
+                  imgStyle + '>' +
             '<span class="card-tl" aria-hidden="true">' +
               '<span class="card-rank">' + rank + '</span>' +
               '<span class="card-suit-small">' + suit + '</span>' +

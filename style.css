@@ -111,11 +111,11 @@
   --ease-out:   cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-spring:cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* Layout */
+  /* Layout — height se deriva SIEMPRE de width con calc() */
   --hud-height: 72px;
-  --card-w:     120px;
-  --card-h:     168px;
-  --card-gap:   var(--sp-4);
+  --card-w:     180px;
+  --card-h:     calc(var(--card-w) * 4 / 3);  /* 180 × 4/3 = 240px */
+  --card-gap:   var(--sp-5);
 }
 
 
@@ -222,8 +222,10 @@ table {
   flex:    1;
   display: flex;
   flex-direction: column;
+  align-items:    center;
   gap:     var(--sp-5);
   padding-block: var(--sp-5);
+  width: 100%;
 }
 
 
@@ -378,13 +380,16 @@ table {
   flex-direction: column;
   align-items:    center;
   gap:            var(--sp-4);
+  width:          100%;
 }
 
 .room-grid {
-  display:         grid;
+  display:               grid;
   grid-template-columns: repeat(4, var(--card-w));
-  gap:             var(--card-gap);
-  justify-content: center;
+  grid-auto-rows:        var(--card-h);  /* TODA fila tiene altura fija */
+  gap:                   var(--card-gap);
+  justify-content:       center;
+  flex-shrink:           0;
 }
 
 /* Notices */
@@ -412,13 +417,22 @@ table {
    7. CARD – SLOT, FACE-DOWN, FACE-UP, TYPES
 ─────────────────────────────────────────────────────────────────*/
 
-/* Slot: perspective container */
+/* Slot: perspective container.
+ * width + height explícitos + overflow:hidden = tamaño absolutamente fijo.
+ * aspect-ratio NO se usa porque falla en grid cuando children son position:absolute. */
 .card-slot {
   width:       var(--card-w);
   height:      var(--card-h);
+  min-width:   var(--card-w);
+  min-height:  var(--card-h);
+  max-width:   var(--card-w);
+  max-height:  var(--card-h);
+  overflow:    hidden;
+  flex-shrink: 0;
   perspective: 900px;
   position:    relative;
   list-style:  none;
+  box-sizing:  border-box;
 }
 
 /* Inner flipper */
@@ -481,6 +495,35 @@ table {
   position:   relative;
   gap:        var(--sp-2);
   cursor:     pointer;
+  /* Background image support */
+  background-size:     cover;
+  background-position: center;
+  background-repeat:   no-repeat;
+}
+
+/*
+ * Dark gradient overlay so rank/suit text stays legible
+ * over any card background image.
+ */
+.card-front::before {
+  content:       '';
+  position:      absolute;
+  inset:         0;
+  border-radius: inherit;
+  background:    linear-gradient(
+    160deg,
+    rgba(0,0,0,0.55) 0%,
+    rgba(0,0,0,0.20) 50%,
+    rgba(0,0,0,0.55) 100%
+  );
+  z-index:       0;
+  pointer-events:none;
+}
+
+/* All direct children of .card-front must sit above the overlay */
+.card-front > * {
+  position: relative;
+  z-index:  1;
 }
 
 /* Top-left rank+suit */
@@ -506,7 +549,7 @@ table {
 }
 
 .card-rank {
-  font-size:   var(--fs-md);
+  font-size:   var(--fs-lg);
   font-weight: 800;
   font-family: var(--font-mono);
   line-height: 1;
@@ -516,18 +559,20 @@ table {
   line-height: 1;
 }
 
-/* Center suit pip */
+/* Center suit pip — reduced opacity when a background image is present */
 .card-center-suit {
-  font-size: 3rem;
+  font-size: 4rem;
   line-height: 1;
-  opacity:   0.85;
+  opacity:   0.35;
 }
 
-/* Card type colour sets */
+/* Card type colour sets.
+ * Use background-color (NOT the background shorthand) so
+ * the inline background-image set by JS is never overridden. */
 .card-slot--monster .card-front {
-  background:   var(--clr-monster-bg);
-  border-color: var(--clr-monster-border);
-  color:        var(--clr-monster);
+  background-color: var(--clr-monster-bg);
+  border-color:     var(--clr-monster-border);
+  color:            var(--clr-monster);
 }
 .card-slot--monster .card-front:hover,
 .card-slot--monster .card-front:focus-visible {
@@ -536,9 +581,9 @@ table {
 }
 
 .card-slot--weapon .card-front {
-  background:   var(--clr-weapon-bg);
-  border-color: var(--clr-weapon-border);
-  color:        var(--clr-weapon);
+  background-color: var(--clr-weapon-bg);
+  border-color:     var(--clr-weapon-border);
+  color:            var(--clr-weapon);
 }
 .card-slot--weapon .card-front:hover,
 .card-slot--weapon .card-front:focus-visible {
@@ -547,9 +592,9 @@ table {
 }
 
 .card-slot--potion .card-front {
-  background:   var(--clr-potion-bg);
-  border-color: var(--clr-potion-border);
-  color:        var(--clr-potion);
+  background-color: var(--clr-potion-bg);
+  border-color:     var(--clr-potion-border);
+  color:            var(--clr-potion);
 }
 .card-slot--potion .card-front:hover,
 .card-slot--potion .card-front:focus-visible {
@@ -596,12 +641,22 @@ table {
   white-space:    nowrap;
 }
 
-/* Empty slot placeholder */
+/* Empty slot — MISMO tamaño que .card-slot, sin excepciones. */
 .card-slot--empty {
-  background:    var(--clr-surface-2);
-  border:        2px dashed var(--clr-border);
+  width:       var(--card-w);
+  height:      var(--card-h);
+  min-width:   var(--card-w);
+  min-height:  var(--card-h);
+  max-width:   var(--card-w);
+  max-height:  var(--card-h);
+  overflow:    hidden;
+  flex-shrink: 0;
+  box-sizing:  border-box;
+  background-color: var(--clr-surface-2);
+  border:      2px dashed var(--clr-border);
   border-radius: var(--radius-lg);
-  opacity:       0.35;
+  opacity:     0.35;
+  perspective: none;
 }
 
 /* Slot number badge */
@@ -1025,8 +1080,7 @@ table {
 /* ── ≤ 680px: stack the 4-card grid into 2×2 ── */
 @media (max-width: 680px) {
   :root {
-    --card-w: 100px;
-    --card-h: 142px;
+    --card-w: 130px;
   }
 
   .room-grid {
@@ -1052,8 +1106,7 @@ table {
 /* ── ≤ 400px: single-column cards ── */
 @media (max-width: 400px) {
   :root {
-    --card-w: 88px;
-    --card-h: 124px;
+    --card-w: 100px;
   }
 
   .room-grid {
@@ -1061,24 +1114,25 @@ table {
   }
 }
 
-/* ── Wide: side-by-side room + log ── */
+/* ── Wide: room centered above log (always column, never side-by-side) ── */
 @media (min-width: 820px) {
   #main-content {
-    flex-direction: row;
-    align-items:    flex-start;
+    flex-direction: column;
+    align-items:    center;
   }
 
   .room-section {
-    flex: 0 0 auto;
+    width: 100%;
+    align-items: center;
   }
 
   .log-section {
-    flex:        1;
-    min-width:   0;
+    width:     100%;
+    max-width: 720px;
   }
 
   .log-scroll {
-    height: 300px;
+    height: 220px;
   }
 }
 

@@ -29,7 +29,10 @@ const CFG = Object.freeze({
 });
 
 // True only during drawRoom() so renderRoom knows to start cards face-down
-var _isNewDeal = false;
+var _isNewDeal    = false;
+// Guard: prevents a second drawRoom() from firing if the user clicks
+// another card while the 400ms transition setTimeout is still pending
+var _drawPending  = false;
 
 function freshState() {
     return {
@@ -140,6 +143,7 @@ function restartGame() {
 
 function drawRoom() {
     if (gs.isGameOver) return;
+    _drawPending = false; // clear the guard whenever we actually run
 
     const carried = gs.room.length === 1 ? Object.assign({}, gs.room[0], { carried: true }) : null;
     gs.room = [];
@@ -257,19 +261,20 @@ function resolveCard(cardIndex) {
     checkEndGame();
     saveGame();
 
-    // When the 3rd card of the room has been resolved, exactly 1 card remains
-    // (the carried card). Call drawRoom() after a short pause so the player sees
-    // it before the next room is dealt. Skip the intermediate render() here —
-    // drawRoom() will do a full render itself, preventing the "cards disappear
-    // then reappear" cycle.
+    // Always render immediately so the resolved card disappears at once.
+    render();
+
+    // After the 3rd resolve, 1 card remains (the carry-forward).
+    // Trigger the next room after a short pause. The _drawPending guard
+    // prevents a double draw if the user somehow triggers another action
+    // before the timeout fires.
     var nextRoomPending = !gs.isGameOver
         && gs.room.length === 1
         && gs.resolvedThisRoom === CFG.ROOM_SIZE - 1;
 
-    if (nextRoomPending) {
-        setTimeout(drawRoom, 400);
-    } else {
-        render();
+    if (nextRoomPending && !_drawPending) {
+        _drawPending = true;
+        setTimeout(drawRoom, 300);
     }
 }
 
@@ -455,7 +460,7 @@ function createCardElement(card, index) {
     } else if (_isNewDeal) {
         classes.push('is-new-deal'); // RAF in drawRoom() will add is-flipped with stagger
     } else {
-        classes.push('is-flipped'); // already visible mid-room, show face-up
+        classes.push('is-flipped', 'is-instant-flip'); // mid-room: snap face-up, no transition
     }
     slot.className = classes.join(' ');
     slot.setAttribute('role', 'listitem');
@@ -466,8 +471,14 @@ function createCardElement(card, index) {
 
     var imgStyle = imgSrc ? ' style="background-image:url(\'' + imgSrc + '\')"' : '';
 
+    // When a background image is present:
+    //  - omit the large center suit pip (it covers the art)
+    //  - omit the type label (redundant with the image)
+    //  - keep only the small corner rank+suit badges
+    var centerSuit = imgSrc ? '' : '<span class="card-center-suit" aria-hidden="true">' + suit + '</span>';
+    var typeLabel2 = imgSrc ? '' : '<span class="card-type-label" aria-hidden="true">' + typeLabel + '</span>';
+
     slot.innerHTML =
-        '<span class="card-slot-number" aria-hidden="true">' + (index + 1) + '</span>' +
         '<div class="card-inner">' +
           '<div class="card-face card-back" aria-hidden="true"></div>' +
           '<button class="card-face card-front" tabindex="0"' +
@@ -478,12 +489,8 @@ function createCardElement(card, index) {
               '<span class="card-rank">' + rank + '</span>' +
               '<span class="card-suit-small">' + suit + '</span>' +
             '</span>' +
-            '<span class="card-center-suit" aria-hidden="true">' + suit + '</span>' +
-            '<span class="card-br" aria-hidden="true">' +
-              '<span class="card-rank">' + rank + '</span>' +
-              '<span class="card-suit-small">' + suit + '</span>' +
-            '</span>' +
-            '<span class="card-type-label" aria-hidden="true">' + typeLabel + '</span>' +
+            centerSuit +
+            typeLabel2 +
             carriedBadge +
             damageTip +
           '</button>' +

@@ -111,10 +111,10 @@
   --ease-out:   cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-spring:cubic-bezier(0.34, 1.56, 0.64, 1);
 
-  /* Layout — height se deriva SIEMPRE de width con calc() */
+  /* Layout */
   --hud-height: 72px;
   --card-w:     180px;
-  --card-h:     calc(var(--card-w) * 4 / 3);  /* 180 × 4/3 = 240px */
+  --card-h:     calc(var(--card-w) * 4 / 3); /* exact 3:4 ratio, always in sync */
   --card-gap:   var(--sp-5);
 }
 
@@ -386,7 +386,7 @@ table {
 .room-grid {
   display:               grid;
   grid-template-columns: repeat(4, var(--card-w));
-  grid-auto-rows:        var(--card-h);  /* TODA fila tiene altura fija */
+  grid-template-rows:    var(--card-h); /* lock row height — never influenced by cell content */
   gap:                   var(--card-gap);
   justify-content:       center;
   flex-shrink:           0;
@@ -417,9 +417,7 @@ table {
    7. CARD – SLOT, FACE-DOWN, FACE-UP, TYPES
 ─────────────────────────────────────────────────────────────────*/
 
-/* Slot: perspective container.
- * width + height explícitos + overflow:hidden = tamaño absolutamente fijo.
- * aspect-ratio NO se usa porque falla en grid cuando children son position:absolute. */
+/* Slot: perspective container */
 .card-slot {
   width:       var(--card-w);
   height:      var(--card-h);
@@ -427,12 +425,12 @@ table {
   min-height:  var(--card-h);
   max-width:   var(--card-w);
   max-height:  var(--card-h);
-  overflow:    hidden;
   flex-shrink: 0;
   perspective: 900px;
   position:    relative;
   list-style:  none;
   box-sizing:  border-box;
+  /* NOTE: no overflow:hidden here — it breaks preserve-3d perspective rendering */
 }
 
 /* Inner flipper */
@@ -447,11 +445,17 @@ table {
 .card-slot.is-flipped .card-inner {
   transform: rotateY(180deg);
 }
+/* Mid-room re-render: card was already face-up → snap instantly, no transition flash */
+.card-slot.is-instant-flip .card-inner {
+  transition: none;
+}
 
 /* Both faces share base styles */
 .card-face {
   position:      absolute;
   inset:         0;
+  width:         100%;  /* explicit fallback for 3d context */
+  height:        100%;
   border-radius: var(--radius-lg);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -528,35 +532,46 @@ table {
 
 /* Top-left rank+suit */
 .card-tl {
-  position:   absolute;
-  top:        var(--sp-2);
-  left:       var(--sp-3);
-  display:    flex;
+  position:       absolute;
+  top:            var(--sp-2);
+  left:           var(--sp-2);
+  display:        flex;
   flex-direction: column;
   align-items:    center;
-  line-height: 1;
+  line-height:    1;
+  background:     rgba(0,0,0,0.55);
+  border-radius:  var(--radius-sm);
+  padding:        2px 5px;
+  min-width:      1.6rem;
 }
 /* Bottom-right rank+suit (rotated) */
 .card-br {
-  position:   absolute;
-  bottom:     var(--sp-2);
-  right:      var(--sp-3);
-  display:    flex;
+  position:       absolute;
+  bottom:         var(--sp-2);
+  right:          var(--sp-2);
+  display:        flex;
   flex-direction: column;
-  align-items: center;
-  line-height: 1;
-  transform:  rotate(180deg);
+  align-items:    center;
+  line-height:    1;
+  transform:      rotate(180deg);
+  background:     rgba(0,0,0,0.55);
+  border-radius:  var(--radius-sm);
+  padding:        2px 5px;
+  min-width:      1.6rem;
 }
 
 .card-rank {
-  font-size:   var(--fs-lg);
+  font-size:   var(--fs-md);
   font-weight: 800;
   font-family: var(--font-mono);
   line-height: 1;
+  color:       #fff;
 }
 .card-suit-small {
-  font-size:   var(--fs-sm);
+  font-size:   var(--fs-xs);
   line-height: 1;
+  opacity:     0.85;
+  color:       #fff;
 }
 
 /* Center suit pip — reduced opacity when a background image is present */
@@ -641,22 +656,21 @@ table {
   white-space:    nowrap;
 }
 
-/* Empty slot — MISMO tamaño que .card-slot, sin excepciones. */
+/* Empty slot — IDENTICAL box to .card-slot; grid row never shifts */
 .card-slot--empty {
-  width:       var(--card-w);
-  height:      var(--card-h);
-  min-width:   var(--card-w);
-  min-height:  var(--card-h);
-  max-width:   var(--card-w);
-  max-height:  var(--card-h);
-  overflow:    hidden;
-  flex-shrink: 0;
-  box-sizing:  border-box;
+  width:        var(--card-w);
+  height:       var(--card-h);
+  min-width:    var(--card-w);
+  min-height:   var(--card-h);
+  max-width:    var(--card-w);
+  max-height:   var(--card-h);
+  flex-shrink:  0;
+  box-sizing:   border-box;
   background-color: var(--clr-surface-2);
-  border:      2px dashed var(--clr-border);
+  border:       2px dashed var(--clr-border);
   border-radius: var(--radius-lg);
-  opacity:     0.35;
-  perspective: none;
+  opacity:      0.35;
+  perspective:  none;
 }
 
 /* Slot number badge */
@@ -1081,6 +1095,7 @@ table {
 @media (max-width: 680px) {
   :root {
     --card-w: 130px;
+    /* --card-h updates automatically via calc() */
   }
 
   .room-grid {
@@ -1107,6 +1122,7 @@ table {
 @media (max-width: 400px) {
   :root {
     --card-w: 100px;
+    /* --card-h updates automatically via calc() */
   }
 
   .room-grid {

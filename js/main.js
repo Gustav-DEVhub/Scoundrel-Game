@@ -45,6 +45,7 @@ function freshState() {
         potionUsedThisRoom:  false,
         resolvedThisRoom:    0,
         selectedCards:       [],
+        carriedCard:         null,
         turnCount:           0,
         isGameOver:          false,
         gameResult:          null,
@@ -157,6 +158,7 @@ function drawRoom() {
     gs.potionUsedThisRoom = false;
     gs.resolvedThisRoom   = 0;
     gs.selectedCards      = [];
+    gs.carriedCard        = null;
     gs.turnCount++;
     saveGame();
 
@@ -213,8 +215,33 @@ function toggleCardSelection(index) {
 }
 
 function resolveCurrentRoom() {
-    // Placeholder — Step 3 will wire full resolution logic here
-    console.log('Habitación lista para resolver');
+    if (gs.isGameOver) return;
+    if (gs.selectedCards.length < CFG.ROOM_SIZE - 1) return;
+
+    // 1. Identify the carried card — the room index NOT in selectedCards
+    var carriedIdx = [0, 1, 2, 3].find(function(i) {
+        return i < gs.room.length && gs.selectedCards.indexOf(i) === -1;
+    });
+    gs.carriedCard = (carriedIdx !== undefined)
+        ? Object.assign({}, gs.room[carriedIdx])
+        : null;
+
+    // 2. Snapshot card *references* in selection order so strategic order
+    //    (e.g. equip weapon → fight monster) is honoured, and so we can
+    //    find each card's live index by reference after prior splices.
+    var toResolve = gs.selectedCards.map(function(idx) {
+        return gs.room[idx];
+    });
+
+    // 3. Clear selection visually before processing
+    gs.selectedCards = [];
+
+    // 4. Process each card; resolveCard() handles all game rules,
+    //    logging, HP changes, weapon equip and the drawRoom() trigger.
+    toResolve.forEach(function(card) {
+        var currentIdx = gs.room.indexOf(card);
+        if (currentIdx !== -1) resolveCard(currentIdx);
+    });
 }
 
 function updateUIState() {
@@ -223,18 +250,19 @@ function updateUIState() {
     if (!btn) return;
 
     var selected = gs.selectedCards.length;
-    var needed   = (CFG.ROOM_SIZE - 1) - selected; // 3 - selected
+    var needed   = (CFG.ROOM_SIZE - 1) - selected;
+    var canFace  = selected >= CFG.ROOM_SIZE - 1
+                   && !gs.isGameOver
+                   && gs.room.length === CFG.ROOM_SIZE;
 
-    if (selected >= CFG.ROOM_SIZE - 1) {
-        // All 3 chosen — enable and highlight
+    if (canFace) {
         btn.disabled = false;
         btn.classList.add('is-ready');
         counter.textContent = '';
     } else {
-        // Still picking
         btn.disabled = true;
         btn.classList.remove('is-ready');
-        counter.textContent = '(' + needed + ' more)';
+        counter.textContent = needed > 0 ? '(' + needed + ' more)' : '';
     }
 }
 
@@ -249,12 +277,16 @@ function resolveCard(cardIndex) {
 
     if (card.type === 'weapon') {
         if (gs.equippedWeapon) {
+            // Old weapon + all monsters it defeated go to discard when replaced
             var oldStack = gs.equippedWeapon.stack || [];
             gs.discard = gs.discard.concat(oldStack).concat([gs.equippedWeapon]);
+            message  = 'Equipped \u2666' + card.value + '. Old \u2666' + gs.equippedWeapon.value + ' & stack discarded.';
+        } else {
+            message  = 'Equipped \u2666' + card.value + '.';
         }
-        gs.equippedWeapon = Object.assign({}, card, { lastDefeated: null, stack: [] });
-        gs.discard.push(card);
-        message  = 'Equipped \u2666' + card.value + '. Old weapon & stack discarded.';
+        // Weapon stays "in play" as equippedWeapon — it goes to discard only when replaced or broken
+        // lastDefeated starts at Infinity so the first monster always triggers weapon use
+        gs.equippedWeapon = Object.assign({}, card, { lastDefeated: Infinity, stack: [] });
         logClass = 'log-equip';
 
     } else if (card.type === 'potion') {
@@ -273,10 +305,10 @@ function resolveCard(cardIndex) {
 
     } else if (card.type === 'monster') {
         /*
-         * Non-increasing weapon rule:
-         *   Weapon usable only if monsterValue <= lastDefeated (or first use).
+         * Strictly-decreasing weapon rule:
+         *   Weapon usable only if monsterValue < lastDefeated (Infinity on a fresh weapon).
          * Example: equip ♦7, defeat ♣9 (damage 2, lastDefeated=9).
-         *   Next: ♣9 OK (9<=9, damage 2). ♣10 NOT OK (10>9, bare-handed 10 dmg).
+         *   Next: ♣8 OK (8<9). ♣9 NOT OK (9≮9, weapon breaks, full damage).
          */
         var usedWeapon = canUseWeapon(card.value);
         var damage;
@@ -291,14 +323,22 @@ function resolveCard(cardIndex) {
                 message  = card.suit + RANK_DISPLAY(card.value) + ' fully blocked by \u2666' + gs.equippedWeapon.value + '!';
                 logClass = 'log-equip';
             }
-        } else {
+        } else if (gs.equippedWeapon) {
+            // Weapon exists but monster >= lastDefeated — weapon BREAKS
             damage = card.value;
-            var reason = !gs.equippedWeapon
-                ? 'bare-handed'
-                : 'weapon too dull (chain: \u2264' + gs.equippedWeapon.lastDefeated + ')';
-            message  = card.suit + RANK_DISPLAY(card.value) + ' fought ' + reason + ' \u2014 ' + damage + ' damage!';
-            logClass = 'log-damage';
+            var brokenWeapon = gs.equippedWeapon;
+            gs.discard = gs.discard.concat(brokenWeapon.stack || []).concat([brokenWeapon]);
+            gs.equippedWeapon = null;
             gs.discard.push(card);
+            message  = '\u2620 ' + card.suit + RANK_DISPLAY(card.value) + ' overpowered the weapon! \u2666' + brokenWeapon.value + ' broke \u2014 ' + damage + ' damage!';
+            logClass = 'log-damage';
+            log('\u26A0\uFE0F The weapon broke!', 'log-system');
+        } else {
+            // No weapon — bare-handed
+            damage = card.value;
+            gs.discard.push(card);
+            message  = card.suit + RANK_DISPLAY(card.value) + ' fought bare-handed \u2014 ' + damage + ' damage!';
+            logClass = 'log-damage';
         }
         gs.health -= damage;
     }
@@ -335,15 +375,15 @@ function resolveCard(cardIndex) {
 
 function canUseWeapon(monsterValue) {
     if (!gs.equippedWeapon) return false;
-    var ld = gs.equippedWeapon.lastDefeated;
-    return ld === null || monsterValue <= ld;
+    var ld = gs.equippedWeapon.lastDefeated; // Infinity on a fresh weapon
+    return monsterValue < ld; // strictly less — equal or greater breaks the weapon
 }
 
 function previewDamage(monsterValue) {
     if (canUseWeapon(monsterValue)) {
         return Math.max(0, monsterValue - gs.equippedWeapon.value);
     }
-    return monsterValue;
+    return monsterValue; // bare-handed or weapon will break
 }
 
 
@@ -365,8 +405,9 @@ function checkEndGame() {
     if (gs.deck.length === 0 && gs.room.length === 0) {
         gs.isGameOver = true;
         gs.gameResult = 'win';
-        gs.score      = gs.health;
-        log('Victory! Dungeon cleared. Score: ' + gs.score, 'log-win');
+        var weaponBonus = gs.equippedWeapon ? gs.equippedWeapon.value : 0;
+        gs.score      = gs.health + weaponBonus;
+        log('Victory! Dungeon cleared. Score: ' + gs.score + ' (HP ' + gs.health + (weaponBonus ? ' + weapon ' + weaponBonus : '') + ')', 'log-win');
         setTimeout(showEndGame, 600);
     }
 }
@@ -419,8 +460,8 @@ function renderHUD() {
     if (gs.equippedWeapon) {
         weaponDisplay.classList.remove('no-weapon');
         weaponVal.textContent  = '\u2666' + gs.equippedWeapon.value;
-        weaponLast.textContent = gs.equippedWeapon.lastDefeated !== null
-            ? String(gs.equippedWeapon.lastDefeated) : '\u2014';
+        weaponLast.textContent = (gs.equippedWeapon.lastDefeated === Infinity)
+            ? '\u2014' : String(gs.equippedWeapon.lastDefeated);
     } else {
         weaponDisplay.classList.add('no-weapon');
         weaponVal.textContent  = '\u2014';
@@ -599,7 +640,7 @@ function showEndGame() {
     } else {
         title.textContent = '\u2620 Defeated';
         title.className   = 'dialog-title lose';
-        desc.textContent  = "You fell in the dungeon. The scoundrel's luck ran out.";
+        desc.textContent  = 'You died in the dungeon. The scoundrel\'s luck ran out.';
     }
 
     scoreEl.textContent = gs.score;

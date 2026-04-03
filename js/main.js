@@ -44,6 +44,7 @@ function freshState() {
         lastActionWasAvoid:  false,
         potionUsedThisRoom:  false,
         resolvedThisRoom:    0,
+        selectedCards:       [],
         turnCount:           0,
         isGameOver:          false,
         gameResult:          null,
@@ -155,6 +156,7 @@ function drawRoom() {
 
     gs.potionUsedThisRoom = false;
     gs.resolvedThisRoom   = 0;
+    gs.selectedCards      = [];
     gs.turnCount++;
     saveGame();
 
@@ -186,6 +188,27 @@ function avoidRoom() {
     gs.lastActionWasAvoid = true;
     log('Avoided the room — all cards sent to the bottom of the deck.', 'log-avoid');
     drawRoom();
+}
+
+/* ── Selection ── */
+function toggleCardSelection(index) {
+    if (gs.isGameOver) return;
+    var card = gs.room[index];
+    if (!card) return;
+
+    var pos = gs.selectedCards.indexOf(index);
+    if (pos !== -1) {
+        // Already selected — deselect
+        gs.selectedCards.splice(pos, 1);
+    } else {
+        // Select only if under the 3-card limit
+        if (gs.selectedCards.length >= CFG.ROOM_SIZE - 1) {
+            log('You can only select 3 cards — deselect one first.', 'log-system');
+            return;
+        }
+        gs.selectedCards.push(index);
+    }
+    render();
 }
 
 function resolveCard(cardIndex) {
@@ -389,7 +412,11 @@ function renderRoom() {
     grid.innerHTML = '';
 
     gs.room.forEach(function(card, index) {
-        grid.appendChild(createCardElement(card, index));
+        var el = createCardElement(card, index);
+        if (gs.selectedCards.indexOf(index) !== -1) {
+            el.classList.add('is-selected');
+        }
+        grid.appendChild(el);
     });
 
     for (var i = gs.room.length; i < CFG.ROOM_SIZE; i++) {
@@ -497,7 +524,7 @@ function createCardElement(card, index) {
         '</div>';
 
     slot.querySelector('.card-front').addEventListener('click', function() {
-        if (!gs.isGameOver) resolveCard(index);
+        if (!gs.isGameOver) toggleCardSelection(index);
     });
 
     return slot;

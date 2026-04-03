@@ -617,12 +617,15 @@ table {
   box-shadow:   0 0 18px var(--clr-potion-glow), var(--shadow-card);
 }
 
-/* Selected card */
+/* Selected card — lifted and glowing */
 .card-slot.is-selected .card-front {
-  outline:        3px solid var(--clr-accent);
-  outline-offset: 3px;
-  transform:      rotateY(180deg) translateY(-6px);
-  box-shadow:     var(--shadow-glow-accent), var(--shadow-card);
+  transform:   rotateY(180deg) translateY(-10px);
+  box-shadow:  0 0 0 3px var(--clr-accent),
+               0 0 24px var(--clr-accent-glow),
+               var(--shadow-card);
+  border-color: var(--clr-accent);
+  transition:  transform var(--dur-base) var(--ease-spring),
+               box-shadow var(--dur-base) var(--ease-out);
 }
 
 /* Disabled / resolved card */

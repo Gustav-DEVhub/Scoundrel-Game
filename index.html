@@ -71,15 +71,9 @@
                   aria-label="Start a new game">New Game</button>
           <button class="btn btn-secondary" id="btn-restart"
                   aria-label="Restart from saved state">Restart</button>
-          <button class="btn btn-avoid" id="btn-avoid"
-                  aria-label="Avoid this room – place all 4 cards at the bottom of the deck"
-                  aria-disabled="false">
-            Avoid
-            <span class="avoid-badge" id="avoid-badge" aria-hidden="true" hidden>✗</span>
-          </button>
-          <button class="btn btn-icon" id="btn-help"
+          <button class="btn btn-help" id="btn-help"
                   aria-label="Open rules and help" aria-haspopup="dialog">
-            <span aria-hidden="true">?</span>
+            Help / Rules
           </button>
         </div>
 
@@ -110,6 +104,19 @@
             Potion already used this room — further potions are discarded.
           </p>
         </section>
+
+        <!-- Avoid action bar -->
+        <div class="avoid-bar">
+          <p class="room-hint" id="room-hint" aria-live="polite">
+            Choose <strong>3</strong> cards to resolve — the 4th carries forward to the next room.
+          </p>
+          <button class="btn btn-avoid" id="btn-avoid"
+                  aria-label="Avoid this room – place all 4 cards at the bottom of the deck"
+                  aria-disabled="false">
+            Avoid Room
+            <span class="avoid-badge" id="avoid-badge" aria-hidden="true" hidden>✗</span>
+          </button>
+        </div>
 
         <!-- Action log -->
         <section class="log-section" aria-label="Action log">
@@ -165,59 +172,82 @@
 
         <div class="help-body" tabindex="0">
 
-          <h3>The Deck</h3>
-          <p>44 cards remain after removing Jokers, red face cards, and red Aces:</p>
+          <div class="help-step">
+            <span class="help-step-num">1</span>
+            <div>
+              <h3>Start the game</h3>
+              <p>Press <strong>New Game</strong>. Four cards are dealt face-up in the room.
+                 Your hero starts with <strong>20 HP</strong>.</p>
+            </div>
+          </div>
+
+          <div class="help-step">
+            <span class="help-step-num">2</span>
+            <div>
+              <h3>Resolve 3 of the 4 cards</h3>
+              <p><strong>Click any card</strong> to interact with it. You must resolve exactly 3 cards
+                 — the one you leave behind carries forward into the next room.</p>
+              <ul>
+                <li>♥ <strong>Potion</strong> — heals you by its value (max 20 HP).
+                    Only <em>one potion heals per room</em>; extras are discarded.</li>
+                <li>♦ <strong>Weapon</strong> — equip it. Your old weapon is discarded.</li>
+                <li>♣ / ♠ <strong>Monster</strong> — you take damage equal to its value
+                    <em>unless</em> your weapon's value is higher (see below).</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="help-step">
+            <span class="help-step-num">3</span>
+            <div>
+              <h3>Using your weapon against monsters</h3>
+              <p>If you have a weapon equipped, it absorbs damage:
+                 <strong>damage = monster value − weapon value</strong> (minimum 0).</p>
+              <p>⚠️ <em>The weapon can only fight a monster whose value is
+                 equal to or lower than the last monster it defeated.</em>
+                 If the new monster is stronger, you fight bare-handed and take full damage.</p>
+              <p class="help-example">Example: Weapon ♦7 defeats ♣9 → 2 damage taken.
+                 Next you can fight ♣9 or lower using the weapon.
+                 A ♠J would deal 11 damage bare-handed.</p>
+            </div>
+          </div>
+
+          <div class="help-step">
+            <span class="help-step-num">4</span>
+            <div>
+              <h3>Or avoid the room</h3>
+              <p>Press <strong>Avoid Room</strong> to send all 4 cards to the bottom of the deck
+                 and draw a fresh room. <em>You cannot avoid two rooms in a row.</em></p>
+            </div>
+          </div>
+
+          <div class="help-step">
+            <span class="help-step-num">5</span>
+            <div>
+              <h3>Win or lose</h3>
+              <ul>
+                <li>🏆 <strong>Win</strong> — clear the entire deck. Score = your remaining HP.</li>
+                <li>💀 <strong>Lose</strong> — HP drops to 0. Score = negative monster total still in deck.</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3 class="help-sub">The cards</h3>
+          <p>44 cards total — red face cards and red Aces are removed from a standard deck:</p>
           <ul>
-            <li><strong>Monsters</strong> ♣ ♠ 2–A (26 cards) — deal damage</li>
-            <li><strong>Weapons</strong>  ♦ 2–10 (9 cards) — reduce damage</li>
-            <li><strong>Potions</strong>  ♥ 2–10 (9 cards) — restore health</li>
-          </ul>
-          <p>Your health starts at <strong>20</strong> and cannot exceed 20.</p>
-
-          <h3>Each Turn — The Room</h3>
-          <p>Four cards are revealed. You must either <strong>Avoid</strong> or <strong>Face</strong> the room.</p>
-
-          <h4>Avoid</h4>
-          <p>All 4 cards go to the bottom of the deck. <em>You cannot avoid two rooms in a row.</em></p>
-
-          <h4>Face the Room</h4>
-          <p>Choose and resolve exactly <strong>3</strong> of the 4 cards in any order.
-             The un-chosen card carries forward into the next room as card #1.</p>
-
-          <h3>Resolving Cards</h3>
-
-          <h4>Potion ♥</h4>
-          <p>Heal by the card's value (capped at 20).
-             <em>Only one potion per room heals you</em> — extras are discarded.</p>
-
-          <h4>Weapon ♦</h4>
-          <p>Equip it: your old weapon (and its defeated-monster stack) is discarded.
-             The weapon's "last defeated" resets to <em>none</em>.</p>
-
-          <h4>Monster ♣ / ♠</h4>
-          <ul>
-            <li><strong>Bare-handed:</strong> take damage equal to the monster's value.</li>
-            <li><strong>With weapon:</strong> damage = max(0, monster − weapon).
-              <br>The weapon can only be used if monster value ≤ last defeated monster's value
-              (or if no monster has been defeated yet).
-              <br><em>Example:</em> weapon ♦7 defeats ♣9 (damage 2), then can fight ♣9 or lower.
-              Fighting ♠J bare-handed after that still costs 11 hp.</li>
+            <li>♣ ♠ 2–A → <strong>26 monsters</strong></li>
+            <li>♦ 2–10 → <strong>9 weapons</strong></li>
+            <li>♥ 2–10 → <strong>9 potions</strong></li>
           </ul>
 
-          <h3>Winning &amp; Losing</h3>
-          <ul>
-            <li><strong>Win</strong> — clear the dungeon deck. Score = remaining health.</li>
-            <li><strong>Lose</strong> — health reaches 0. Score = negative sum of remaining monster values.</li>
-          </ul>
-
-          <h3>Keyboard Controls</h3>
+          <h3 class="help-sub">Keyboard shortcuts</h3>
           <table class="help-table">
             <thead><tr><th>Key</th><th>Action</th></tr></thead>
             <tbody>
               <tr><td>N</td><td>New Game</td></tr>
               <tr><td>A</td><td>Avoid Room</td></tr>
-              <tr><td>1 – 4</td><td>Select card in slot</td></tr>
-              <tr><td>H / ?</td><td>Toggle Help</td></tr>
+              <tr><td>1 – 4</td><td>Resolve card in slot</td></tr>
+              <tr><td>H / ?</td><td>Toggle Help &amp; Rules</td></tr>
               <tr><td>Esc</td><td>Close overlay</td></tr>
             </tbody>
           </table>

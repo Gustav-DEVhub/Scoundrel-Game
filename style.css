@@ -766,10 +766,33 @@ table {
 /* ───────────────────────────────────────────────────────────────
    9. ACTION LOG
 ─────────────────────────────────────────────────────────────────*/
+/* Avoid button bar — centered between room and log */
+.avoid-bar {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             var(--sp-3);
+  padding:         var(--sp-4) 0 var(--sp-2);
+}
+
+/* Instruction hint above Avoid Room button */
+.room-hint {
+  font-size:   var(--fs-sm);
+  color:       var(--clr-text-muted);
+  text-align:  center;
+  margin:      0;
+  line-height: 1.4;
+}
+.room-hint strong {
+  color:       var(--clr-text);
+  font-weight: 700;
+}
+
 .log-section {
   display:        flex;
   flex-direction: column;
   gap:            var(--sp-2);
+  margin-top:     var(--sp-2);
 }
 
 .log-heading {
@@ -897,6 +920,18 @@ table {
 }
 .btn-icon:hover { background: var(--clr-border); color: var(--clr-text); }
 
+.btn-help {
+  padding:       var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-pill);
+  background:    var(--clr-surface-3);
+  color:         var(--clr-text-muted);
+  border:        1px solid var(--clr-border);
+  font-size:     var(--fs-sm);
+  font-weight:   700;
+  white-space:   nowrap;
+}
+.btn-help:hover { background: var(--clr-border); color: var(--clr-text); }
+
 .btn-close {
   background: transparent;
   border:     1px solid var(--clr-border);
@@ -990,6 +1025,59 @@ table {
   display:       flex;
   flex-direction:column;
   gap:           var(--sp-4);
+}
+
+/* Numbered step rows */
+.help-step {
+  display:    flex;
+  gap:        var(--sp-4);
+  align-items:flex-start;
+}
+.help-step-num {
+  flex-shrink:   0;
+  width:         28px;
+  height:        28px;
+  border-radius: var(--radius-pill);
+  background:    var(--clr-accent-glow);
+  border:        1px solid var(--clr-accent-dim);
+  color:         var(--clr-accent);
+  font-weight:   800;
+  font-size:     var(--fs-sm);
+  display:       flex;
+  align-items:   center;
+  justify-content:center;
+  margin-top:    2px;
+}
+.help-step h3 {
+  font-size:     var(--fs-md);
+  color:         var(--clr-text);
+  margin-bottom: var(--sp-1);
+  border:        none;
+  padding:       0;
+  margin-top:    0;
+}
+.help-step p,
+.help-step ul {
+  margin-top: var(--sp-1);
+}
+
+.help-example {
+  font-size:   var(--fs-sm);
+  font-style:  italic;
+  background:  var(--clr-surface-2);
+  border-left: 3px solid var(--clr-accent-dim);
+  padding:     var(--sp-2) var(--sp-3);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color:       var(--clr-text-muted) !important;
+}
+
+.help-sub {
+  font-size:      var(--fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color:          var(--clr-text-muted);
+  border-bottom:  1px solid var(--clr-border);
+  padding-bottom: var(--sp-1);
 }
 
 .help-body h3 {

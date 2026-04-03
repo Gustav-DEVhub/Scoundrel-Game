@@ -778,6 +778,15 @@ table {
   padding:         var(--sp-4) 0 var(--sp-2);
 }
 
+/* Button row inside the avoid-bar */
+.action-bar-buttons {
+  display:     flex;
+  gap:         var(--sp-3);
+  align-items: center;
+  flex-wrap:   wrap;
+  justify-content: center;
+}
+
 /* Instruction hint above Avoid Room button */
 .room-hint {
   font-size:   var(--fs-sm);
@@ -894,6 +903,34 @@ table {
   opacity: 0.4;
   cursor:  not-allowed;
   pointer-events: none;
+}
+
+/* Face Selected button */
+.btn-face {
+  background: var(--clr-surface-2);
+  color:      var(--clr-text-muted);
+  border:     1px solid var(--clr-border);
+  min-width:  11rem;
+  transition: background var(--dur-base) var(--ease-out),
+              color      var(--dur-base) var(--ease-out),
+              border-color var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out);
+}
+.btn-face:disabled {
+  opacity: 0.5;
+  cursor:  not-allowed;
+}
+/* Fully selected — emerald green, matches --clr-ok / --clr-potion palette */
+.btn-face.is-ready {
+  background:  var(--clr-potion-bg);
+  color:       var(--clr-ok);
+  border-color: var(--clr-potion-border);
+  font-weight: 700;
+  box-shadow:  0 0 14px rgba(39, 174, 96, 0.35);
+}
+.btn-face.is-ready:hover {
+  background: color-mix(in srgb, var(--clr-ok) 20%, transparent);
+  box-shadow: 0 0 22px rgba(39, 174, 96, 0.55);
 }
 
 .avoid-badge {

@@ -110,12 +110,19 @@
           <p class="room-hint" id="room-hint" aria-live="polite">
             Choose <strong>3</strong> cards to resolve — the 4th carries forward to the next room.
           </p>
-          <button class="btn btn-avoid" id="btn-avoid"
-                  aria-label="Avoid this room – place all 4 cards at the bottom of the deck"
-                  aria-disabled="false">
-            Avoid Room
-            <span class="avoid-badge" id="avoid-badge" aria-hidden="true" hidden>✗</span>
-          </button>
+          <div class="action-bar-buttons">
+            <button class="btn btn-face" id="btn-face"
+                    aria-label="Face the selected cards"
+                    disabled>
+              Face Selected <span id="face-counter">(3 more)</span>
+            </button>
+            <button class="btn btn-avoid" id="btn-avoid"
+                    aria-label="Avoid this room – place all 4 cards at the bottom of the deck"
+                    aria-disabled="false">
+              Avoid Room
+              <span class="avoid-badge" id="avoid-badge" aria-hidden="true" hidden>✗</span>
+            </button>
+          </div>
         </div>
 
         <!-- Action log -->

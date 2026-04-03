@@ -209,6 +209,33 @@ function toggleCardSelection(index) {
         gs.selectedCards.push(index);
     }
     render();
+    updateUIState();
+}
+
+function resolveCurrentRoom() {
+    // Placeholder — Step 3 will wire full resolution logic here
+    console.log('Habitación lista para resolver');
+}
+
+function updateUIState() {
+    var btn     = document.getElementById('btn-face');
+    var counter = document.getElementById('face-counter');
+    if (!btn) return;
+
+    var selected = gs.selectedCards.length;
+    var needed   = (CFG.ROOM_SIZE - 1) - selected; // 3 - selected
+
+    if (selected >= CFG.ROOM_SIZE - 1) {
+        // All 3 chosen — enable and highlight
+        btn.disabled = false;
+        btn.classList.add('is-ready');
+        counter.textContent = '';
+    } else {
+        // Still picking
+        btn.disabled = true;
+        btn.classList.remove('is-ready');
+        counter.textContent = '(' + needed + ' more)';
+    }
 }
 
 function resolveCard(cardIndex) {
@@ -369,6 +396,7 @@ function render() {
     renderHUD();
     renderRoom();
     renderControls();
+    updateUIState();
 }
 
 function renderHUD() {
@@ -605,6 +633,9 @@ function setupEvents() {
     document.getElementById('btn-new-game').addEventListener('click', newGame);
     document.getElementById('btn-restart').addEventListener('click', restartGame);
     document.getElementById('btn-avoid').addEventListener('click', avoidRoom);
+    document.getElementById('btn-face').addEventListener('click', function() {
+        if (gs.selectedCards.length >= CFG.ROOM_SIZE - 1) resolveCurrentRoom();
+    });
     document.getElementById('btn-help').addEventListener('click', showHelp);
     document.getElementById('btn-help-close').addEventListener('click', hideHelp);
 

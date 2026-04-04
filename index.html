@@ -24,6 +24,15 @@
       ───────────────────────────────────────── -->
       <header class="hud" role="banner" aria-label="Game status">
 
+        <!-- Title row: game name + controls toggle -->
+        <div class="hud-title-row">
+          <span class="hud-title">Scoundrel</span>
+          <button class="btn btn-hud-toggle" id="btn-hud-toggle"
+                  aria-label="Show or hide controls"
+                  aria-expanded="false"
+                  aria-controls="hud-controls">&#9660;</button>
+        </div>
+
         <!-- Health -->
         <div class="hud-block hud-health" aria-label="Health">
           <span class="hud-label">Health</span>
@@ -32,40 +41,45 @@
                aria-valuenow="20" aria-label="Health bar"
                id="health-bar-track">
             <div class="health-bar-fill" id="health-bar-fill"></div>
+            <span class="hud-value" id="health-value" aria-live="polite">20 / 20</span>
           </div>
-          <span class="hud-value" id="health-value" aria-live="polite">20 / 20</span>
         </div>
 
-        <!-- Weapon -->
-        <div class="hud-block hud-weapon" aria-label="Equipped weapon">
-          <span class="hud-label">Weapon</span>
-          <div class="weapon-display" id="weapon-display">
-            <span class="weapon-suit" id="weapon-suit" aria-hidden="true">♦</span>
-            <span class="weapon-value" id="weapon-value">—</span>
+        <!-- Stats row: weapon pill + Turn/Deck/Discard pills -->
+        <div class="hud-stats-row">
+
+          <!-- Weapon pill -->
+          <div class="hud-block hud-weapon" aria-label="Equipped weapon">
+            <span class="hud-label">Weapon</span>
+            <div class="weapon-display" id="weapon-display">
+              <span class="weapon-suit" id="weapon-suit" aria-hidden="true">♦</span>
+              <span class="weapon-value" id="weapon-value">—</span>
+            </div>
+            <span class="hud-sub" id="weapon-last-label">Last defeated:</span>
+            <span class="hud-sub hud-sub-value" id="weapon-last-value" aria-live="polite">—</span>
           </div>
-          <span class="hud-sub" id="weapon-last-label">Last defeated:</span>
-          <span class="hud-sub hud-sub-value" id="weapon-last-value" aria-live="polite">—</span>
-        </div>
 
-        <!-- Turn & Deck info -->
-        <div class="hud-block hud-info">
-          <dl class="hud-stats">
-            <div class="stat-row">
-              <dt>Turn</dt>
-              <dd id="turn-counter" aria-live="polite">1</dd>
-            </div>
-            <div class="stat-row">
-              <dt>Deck</dt>
-              <dd id="deck-count" aria-live="polite">44</dd>
-            </div>
-            <div class="stat-row">
-              <dt>Discard</dt>
-              <dd id="discard-count" aria-live="polite">0</dd>
-            </div>
-          </dl>
-        </div>
+          <!-- Turn / Deck / Discard pills -->
+          <div class="hud-block hud-info">
+            <dl class="hud-stats">
+              <div class="stat-row">
+                <dt>Turn</dt>
+                <dd id="turn-counter" aria-live="polite">1</dd>
+              </div>
+              <div class="stat-row">
+                <dt>Deck</dt>
+                <dd id="deck-count" aria-live="polite">44</dd>
+              </div>
+              <div class="stat-row">
+                <dt>Discard</dt>
+                <dd id="discard-count" aria-live="polite">0</dd>
+              </div>
+            </dl>
+          </div>
 
-        <!-- Controls -->
+        </div><!-- /.hud-stats-row -->
+
+        <!-- Controls (hidden by default, revealed by toggle) -->
         <div class="hud-block hud-controls" id="hud-controls">
           <button class="btn btn-primary" id="btn-new-game"
                   aria-label="Start a new game">New Game</button>
@@ -82,12 +96,6 @@
             Help / Rules
           </button>
         </div>
-
-        <!-- Mobile-only toggle for controls -->
-        <button class="btn btn-hud-toggle" id="btn-hud-toggle"
-                aria-label="Show or hide controls"
-                aria-expanded="false"
-                aria-controls="hud-controls">&#9660;</button>
 
       </header>
 

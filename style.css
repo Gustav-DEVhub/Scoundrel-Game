@@ -213,19 +213,21 @@ table {
 .app {
   display:        flex;
   flex-direction: column;
-  min-height:     100dvh;
+  height:         100dvh;   /* constrain chain so .log-scroll can scroll */
   max-width:      1100px;
   margin-inline:  auto;
   padding-inline: var(--sp-4);
+  overflow:       hidden;   /* clip anything that escapes on desktop */
 }
 
 #main-content {
-  flex:    1;
+  flex:       1;
+  min-height: 0;           /* allow flex to shrink below content size */
   display: flex;
   flex-direction: column;
   align-items:    center;
-  gap:     var(--sp-2);
-  padding-block-start: var(--sp-2);
+  gap:     var(--sp-1);   /* tight: cards hug the HUD */
+  padding-block-start: 0;
   padding-block-end:   var(--sp-4);
   width: 100%;
 }
@@ -235,39 +237,74 @@ table {
    5. HUD
 ─────────────────────────────────────────────────────────────────*/
 .hud {
-  display:          flex;
-  align-items:      center;
-  flex-wrap:        wrap;
-  gap:              var(--sp-4);
-  padding:          var(--sp-3) var(--sp-4);
-  background:       var(--clr-surface);
-  border-bottom:    1px solid var(--clr-border);
-  position:         sticky;
-  top:              0;
-  z-index:          100;
-  box-shadow:       var(--shadow-panel);
+  display:        flex;
+  flex-direction: column;
+  gap:            var(--sp-2);
+  padding:        var(--sp-3) var(--sp-4);
+  background:     var(--clr-surface);
+  border-bottom:  1px solid var(--clr-border);
+  position:       sticky;
+  top:            0;
+  z-index:        100;
+  box-shadow:     var(--shadow-panel);
+}
+
+/* Title row — game name on the left, toggle button on the right */
+.hud-title-row {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  width:           100%;
+}
+
+.hud-title {
+  font-size:      var(--fs-lg);
+  font-weight:    800;
+  color:          var(--clr-text);
+  letter-spacing: 0.02em;
+}
+
+/* Toggle button — visible on all screen sizes, isolated in title row */
+.btn-hud-toggle {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  width:           28px;
+  height:          28px;
+  border-radius:   var(--radius-sm);
+  font-size:       var(--fs-xs);
+  color:           var(--clr-text-muted);
+  background:      var(--clr-surface-2);
+  border:          1px solid var(--clr-border);
+  transition:      transform var(--dur-fast), background var(--dur-fast);
+  flex-shrink:     0;
+}
+.btn-hud-toggle:hover {
+  background: var(--clr-border);
+  color:      var(--clr-text);
+}
+.btn-hud-toggle[aria-expanded="true"] {
+  transform: rotate(180deg);
 }
 
 .hud-block {
   display:     flex;
   align-items: center;
   gap:         var(--sp-2);
-  flex-shrink: 0;
 }
 
 .hud-label {
-  font-size:   var(--fs-xs);
-  font-weight: 700;
+  font-size:      var(--fs-xs);
+  font-weight:    700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color:       var(--clr-text-muted);
+  color:          var(--clr-text-muted);
 }
 
 .hud-value {
   font-size:   var(--fs-sm);
   font-weight: 600;
   color:       var(--clr-text);
-  min-width:   3.5rem;
 }
 
 .hud-sub {
@@ -275,81 +312,126 @@ table {
   color:      var(--clr-text-muted);
 }
 .hud-sub-value {
-  font-size:  var(--fs-sm);
-  color:      var(--clr-text);
+  font-size:   var(--fs-sm);
+  color:       var(--clr-text);
   font-weight: 600;
-  min-width:  2rem;
 }
 
-/* Health block */
+/* ── Health block ── */
 .hud-health {
-  gap: var(--sp-3);
+  width:          100%;
+  flex-direction: column;
+  align-items:    stretch;
+  gap:            var(--sp-1);
 }
 
 .health-bar-track {
-  width:         110px;
-  height:        12px;
+  width:         100%;
+  height:        1.6rem;
   background:    var(--clr-surface-3);
   border-radius: var(--radius-pill);
   overflow:      hidden;
   border:        1px solid var(--clr-border);
+  position:      relative;   /* host for the value overlay */
 }
 
 .health-bar-fill {
-  height:          100%;
-  width:           100%;
-  background:      var(--clr-hp-high);
-  border-radius:   var(--radius-pill);
+  height:           100%;
+  width:            100%;
+  background:       var(--clr-hp-high);
+  border-radius:    var(--radius-pill);
   transform-origin: left center;
-  transition:      width var(--dur-slow) var(--ease-out),
-                   background-color var(--dur-base);
+  transition:       width var(--dur-slow) var(--ease-out),
+                    background-color var(--dur-base);
 }
 .health-bar-fill.hp-mid { background: var(--clr-hp-mid); }
 .health-bar-fill.hp-low { background: var(--clr-hp-low);
                            animation: pulse-low 1.2s infinite; }
+
+/* Health value — centred text overlaid on the bar */
+#health-value {
+  position:        absolute;
+  inset:           0;
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  font-size:       var(--fs-xs);
+  font-weight:     700;
+  color:           #fff;
+  text-shadow:     0 1px 3px rgba(0,0,0,.6);
+  z-index:         1;
+  pointer-events:  none;
+  min-width:       unset;
+}
 
 @keyframes pulse-low {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.65; }
 }
 
-/* Weapon block */
-.hud-weapon {
-  gap:        var(--sp-2);
-  flex-wrap:  wrap;
+/* ── Stats row — weapon + turn/deck/discard in one line ── */
+.hud-stats-row {
+  display: flex;
+  gap:     var(--sp-2);
+  width:   100%;
 }
 
-.weapon-display {
-  display:    flex;
-  align-items:center;
-  gap:        var(--sp-1);
-  background: var(--clr-weapon-bg);
-  border:     1px solid var(--clr-weapon-border);
-  border-radius: var(--radius-md);
-  padding:    var(--sp-1) var(--sp-3);
+/* Weapon block — compact pill */
+.hud-weapon {
+  flex:            1;
+  flex-direction:  column;
+  align-items:     center;
+  justify-content: center;
+  gap:             var(--sp-1);
+  background:      var(--clr-surface-2);
+  border:          1px solid var(--clr-border);
+  border-radius:   var(--radius-md);
+  padding:         var(--sp-2) var(--sp-2);
+  min-width:       0;
 }
-.weapon-suit  { color: var(--clr-weapon); font-size: var(--fs-md); }
-.weapon-value { color: var(--clr-text);   font-size: var(--fs-md); font-weight: 700; }
+
+/* Strip inner bg/border — the outer pill is the container */
+.weapon-display {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-1);
+}
+.weapon-suit  { color: var(--clr-weapon); font-size: var(--fs-sm); }
+.weapon-value { color: var(--clr-text);   font-size: var(--fs-sm); font-weight: 700; }
+
+/* Hide "Last defeated" in the compact pill */
+.hud-weapon .hud-sub,
+.hud-weapon .hud-sub-value { display: none; }
 
 /* No weapon equipped */
-.weapon-display.no-weapon {
-  background: var(--clr-surface-2);
-  border-color: var(--clr-border);
-}
 .weapon-display.no-weapon .weapon-suit,
 .weapon-display.no-weapon .weapon-value {
   color: var(--clr-text-dim);
 }
 
-/* Stats */
+/* Stats info: fills remaining space */
+.hud-info {
+  flex:      3;
+  min-width: 0;
+}
+
+/* Stats dl — row of pills */
 .hud-stats {
-  display:  flex;
-  gap:      var(--sp-4);
+  display: flex;
+  gap:     var(--sp-2);
+  flex:    1;
+  width:   100%;
 }
 .stat-row {
-  display:        flex;
-  flex-direction: column;
-  align-items:    center;
+  flex:            1;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  background:      var(--clr-surface-2);
+  border:          1px solid var(--clr-border);
+  border-radius:   var(--radius-md);
+  padding:         var(--sp-1) var(--sp-2);
+  min-width:       0;
 }
 .stat-row dt {
   font-size:      var(--fs-xs);
@@ -359,18 +441,23 @@ table {
   color:          var(--clr-text-muted);
 }
 .stat-row dd {
-  font-size:  var(--fs-md);
-  font-weight:700;
-  color:      var(--clr-accent);
-  font-family:var(--font-mono);
+  font-size:   var(--fs-md);
+  font-weight: 700;
+  color:       var(--clr-accent);
+  font-family: var(--font-mono);
 }
 
-/* Controls block */
+/* Controls — hidden by default, revealed by toggle */
 .hud-controls {
-  display:    flex;
-  gap:        var(--sp-2);
-  flex-wrap:  wrap;
-  margin-left:auto;
+  display:     none;
+  gap:         var(--sp-2);
+  flex-wrap:   wrap;
+  width:       100%;
+  padding-top: var(--sp-2);
+  border-top:  1px solid var(--clr-border);
+}
+.hud-controls.is-open {
+  display: flex;
 }
 
 
@@ -404,15 +491,16 @@ table {
   text-align:    center;
   transition:  opacity var(--dur-base) var(--ease-out);
 }
-/* Always keep the notice in flow (display:block) even when [hidden],
-   so it never causes layout shifts when it appears / disappears.
-   Only the visibility / opacity change — the height is always reserved. */
+/* Collapse notices to zero height when hidden — minor layout shift on appear is acceptable.
+   Old approach (visibility:hidden, full height reserved) caused excessive blank space. */
 .avoid-notice[hidden],
 .potion-notice[hidden] {
   display:        block !important;
   visibility:     hidden;
   opacity:        0;
   pointer-events: none;
+  /* Keep the box in flow at its natural height — no shift when it appears/disappears */
+  margin:         0;
 }
 .avoid-notice {
   background: color-mix(in srgb, var(--clr-warn) 15%, transparent);
@@ -741,54 +829,45 @@ table {
 /* ───────────────────────────────────────────────────────────────
    8. CARD FLIP ANIMATION ENTRY
 ─────────────────────────────────────────────────────────────────*/
-/* Deal drop-in: only applied during actual new deals (not mid-room re-renders) */
+/* Deal drop-in — all new cards slide down together, face-down */
 @keyframes card-deal {
-  from {
-    opacity:   0;
-    transform: translateY(-22px) scale(0.88);
-  }
-  to {
-    opacity:   1;
-    transform: translateY(0)     scale(1);
-  }
+  from { opacity: 0; transform: translateY(-26px) scale(0.86); }
+  to   { opacity: 1; transform: translateY(0)     scale(1);    }
 }
-.card-slot.is-dealing {
-  animation: card-deal 320ms var(--ease-spring) both;
+.card-slot.is-dealing.is-new-deal {
+  animation: card-deal 300ms var(--ease-spring) both;
 }
 
-/* New game / avoid reset — cards flip back then fade-out downward */
+/* Flip reveal — fires after drop-in completes (JS setTimeout), staggered by card position */
+@keyframes card-flip-reveal {
+  from { transform: rotateY(0deg);   }
+  to   { transform: rotateY(180deg); }
+}
+.card-slot.is-new-deal.is-flipped .card-inner {
+  transition: none; /* suppress default transition; animation drives it */
+  animation:  card-flip-reveal 300ms cubic-bezier(0.35, 0, 0.25, 1) both;
+}
+.card-slot.is-new-deal.is-flipped:nth-child(1) .card-inner { animation-delay:   0ms; }
+.card-slot.is-new-deal.is-flipped:nth-child(2) .card-inner { animation-delay:  90ms; }
+.card-slot.is-new-deal.is-flipped:nth-child(3) .card-inner { animation-delay: 180ms; }
+.card-slot.is-new-deal.is-flipped:nth-child(4) .card-inner { animation-delay: 270ms; }
+
+/* Reset (exit) — smooth fade-out downward */
 @keyframes card-reset {
-  0%   { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(10px) scale(0.92); }
+  0%   { opacity: 1; transform: translateY(0)    scale(1);    }
+  100% { opacity: 0; transform: translateY(14px) scale(0.90); }
 }
 .card-slot.is-resetting {
-  animation: card-reset 180ms var(--ease-out) both;
+  animation: card-reset 240ms var(--ease-out) both;
   pointer-events: none;
 }
 .card-slot.is-resetting .card-inner {
   transform: rotateY(0deg);
-  transition: transform 160ms var(--ease-out);
+  transition: transform 200ms var(--ease-out);
 }
 
-/* Subtle pop when new cards land — delayed to fire AFTER the flip */
-@keyframes card-pop {
-  0%   { transform: translateY(0) scale(1); }
-  55%  { transform: translateY(-3px) scale(1.025); }
-  100% { transform: translateY(0) scale(1); }
-}
-.card-slot.is-new-deal {
-  animation: card-pop 220ms var(--ease-spring) 280ms both;
-}
-
-/* Resolve fade-out */
-@keyframes card-resolve {
-  to {
-    transform: none;
-  }
-}
-.card-slot.is-resolving {
-  animation: none;
-}
+/* Resolve */
+.card-slot.is-resolving { animation: none; }
 .card-slot.is-resolving .card-inner {
   transform: rotateY(0deg);
   transition: transform 160ms var(--ease-out);
@@ -805,6 +884,9 @@ table {
   align-items:     center;
   gap:             var(--sp-2);
   padding:         var(--sp-2) 0 var(--sp-1);
+  /* Stable height: prevent layout shifts when button states or hints change */
+  width:           100%;
+  flex-shrink:     0;
 }
 
 /* Button row inside the avoid-bar */
@@ -824,6 +906,8 @@ table {
   margin:      0;
   line-height: 1.4;
   opacity:     0.8;
+  /* Reserve space even when empty — prevents vertical layout shift */
+  min-height:  calc(var(--fs-xs) * 1.4);
 }
 .room-hint strong {
   color:       var(--clr-text);
@@ -852,27 +936,36 @@ table {
 
 .log-scroll {
   flex:       1;
-  min-height: 160px;
+  min-height: 0;
   overflow-y: auto;
   background: var(--clr-surface-2);
   border:     1px solid var(--clr-border-light);
   border-radius: var(--radius-md);
-  padding:    var(--sp-3) var(--sp-4);
+  padding:    var(--sp-3) var(--sp-4) var(--sp-3) calc(var(--sp-4) + 2px);
   font-family:var(--font-mono);
   font-size:  var(--fs-sm);
   scroll-behavior: smooth;
+  /* Themed scrollbar — gold accent on dark surface */
   scrollbar-width: thin;
-  scrollbar-color: var(--clr-border-light) transparent;
+  scrollbar-color: var(--clr-accent-dim) var(--clr-surface-3);
 }
+/* WebKit scrollbar — more visible, dungeon-flavoured */
 .log-scroll::-webkit-scrollbar {
-  width: 4px;
+  width: 8px;
 }
 .log-scroll::-webkit-scrollbar-track {
-  background: transparent;
+  background:    var(--clr-surface-3);
+  border-radius: var(--radius-pill);
+  border:        1px solid var(--clr-border);
 }
 .log-scroll::-webkit-scrollbar-thumb {
-  background:    var(--clr-border-light);
+  background:    var(--clr-accent-dim);
   border-radius: var(--radius-pill);
+  border:        2px solid var(--clr-surface-3);
+  transition:    background var(--dur-fast);
+}
+.log-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--clr-accent);
 }
 
 .log-list {
@@ -1378,93 +1471,25 @@ table {
     grid-template-columns: repeat(2, var(--card-w));
   }
 
-  /* HUD: 3 columns — health | weapon | stats, compact single row */
+  /* HUD: tighter padding on small screens */
   .hud {
-    display:               grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-areas:   "health weapon info";
-    align-items:           start;
-    gap:                   var(--sp-2);
-    padding-block:         var(--sp-2);
-    padding-inline:        var(--sp-3);
-    position:              relative; /* for toggle button positioning */
+    gap:            var(--sp-2);
+    padding-block:  var(--sp-2);
+    padding-inline: var(--sp-3);
   }
 
-  .hud-health {
-    grid-area: health;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--sp-1);
-  }
-
-  .hud-weapon {
-    grid-area:      weapon;
-    flex-direction: column;
-    align-items:    flex-start;
-    gap:            var(--sp-1);
-  }
-
-  .hud-info {
-    grid-area:   info;
-    align-items: flex-start;
-  }
-
-  /* Controls: hidden by default on mobile, toggled via JS */
-  .hud-controls {
-    grid-area:       1 / 1 / 2 / 4; /* span full width when visible */
-    margin-left:     0;
-    justify-content: flex-start;
-    flex-wrap:       wrap;
-    display:         none;          /* hidden by default */
-    padding-top:     var(--sp-2);
-    border-top:      1px solid var(--clr-border);
-    margin-top:      var(--sp-1);
-  }
-
-  .hud-controls.is-open {
-    display: flex;
-  }
-
-  /* Re-flow grid when controls are visible */
-  .hud:has(.hud-controls.is-open) {
-    grid-template-areas:
-      "health weapon info"
-      "controls controls controls";
-  }
-
-  /* Arrow toggle button */
-  .btn-hud-toggle {
-    display:       flex;
-    align-items:   center;
-    justify-content: center;
-    position:      absolute;
-    top:           var(--sp-1);
-    right:         var(--sp-2);
-    width:         28px;
-    height:        28px;
-    border-radius: var(--radius-sm);
-    font-size:     var(--fs-xs);
-    color:         var(--clr-text-muted);
-    background:    var(--clr-surface-2);
-    border:        1px solid var(--clr-border);
-    transition:    transform var(--dur-fast), background var(--dur-fast);
-  }
-  .btn-hud-toggle:hover {
-    background: var(--clr-border);
-    color:      var(--clr-text);
-  }
-  .btn-hud-toggle[aria-expanded="true"] {
-    transform: rotate(180deg);
-  }
-
-  .health-bar-track { width: 70px; }
+  /* Compact pill font sizes */
+  .stat-row dt   { font-size: 9px; letter-spacing: 0.04em; }
+  .stat-row dd   { font-size: var(--fs-sm); line-height: 1.1; }
+  .hud-stats     { gap: var(--sp-1); }
+  .hud-stats-row { gap: var(--sp-1); }
 
   /* Action bar: single row, no wrapping */
   .action-bar-buttons {
     flex-wrap: nowrap;
   }
   .action-bar-buttons .btn {
-    flex: 1;
+    flex:        1;
     white-space: nowrap;
     font-size:   var(--fs-sm);
   }
@@ -1523,8 +1548,8 @@ table {
     scroll-behavior:      auto !important;
   }
 
-  .card-slot.is-dealing { animation: none; }
-  .card-slot.is-new-deal { animation: none; }
+  .card-slot.is-dealing.is-new-deal { animation: none; }
+  .card-slot.is-new-deal.is-flipped .card-inner { animation: none; transition: none; }
   .card-slot.is-resetting {
     opacity: 1;
     transform: none;
@@ -1850,17 +1875,19 @@ table {
    §22 — STATUS BAR (save indicator + resume banner)
 ════════════════════════════════════════════════════════════ */
 .status-bar {
-  display:     flex;
-  align-items: center;
-  gap:         var(--sp-3);
-  min-height:  1.6rem;   /* prevent layout shift */
-  padding:     0 var(--sp-2);
-  margin-bottom: var(--sp-1);
+  display:    none; /* save-indicator repositioned as absolute overlay — no flow space used */
 }
 
 .save-indicator {
+  position:        fixed;  /* float in corner; no flow space taken */
+  bottom:          var(--sp-3);
+  right:           var(--sp-3);
+  z-index:         200;
   font-size:       var(--fs-xs);
   color:           var(--clr-text-muted);
+  background:      color-mix(in srgb, var(--clr-surface) 90%, transparent);
+  padding:         0.15rem var(--sp-2);
+  border-radius:   var(--radius-sm);
   opacity:         0;
   pointer-events:  none;
   user-select:     none;
@@ -2088,6 +2115,11 @@ label {
 
 /* ── Sticky action bar on mobile ──────────────────────────── */
 @media (max-width: 680px) {
+  /* Restore page scroll on mobile — cards + log scroll together */
+  body { overflow-y: auto; }
+  .app  { height: auto; min-height: 100dvh; overflow: visible; }
+  #main-content { min-height: unset; }
+
   .avoid-bar {
     position:   sticky;
     bottom:     env(safe-area-inset-bottom, 0px);
@@ -2095,7 +2127,7 @@ label {
     padding:    var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
     border-top: 1px solid var(--clr-border);
     z-index:    100;
-    margin-inline: calc(-1 * var(--sp-4)); /* bleed to edges inside padding */
+    margin-inline: calc(-1 * var(--sp-4));
   }
 
   /* Wider hit area for buttons in the bar */
@@ -2103,6 +2135,21 @@ label {
     flex:       1;
     min-height: 52px;
     font-size:  var(--fs-sm);
+  }
+
+  /* Face button: stack label + counter vertically, both centred */
+  .btn-face {
+    min-width:      0;
+    flex-direction: column;
+    gap:            0;
+    line-height:    1.2;
+    padding-block:  var(--sp-1);
+  }
+  #face-counter {
+    min-width:   auto;
+    font-size:   var(--fs-xs);
+    font-weight: 400;
+    opacity:     0.8;
   }
 
   /* Card tap: stronger visual feedback on small screens */

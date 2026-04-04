@@ -132,7 +132,7 @@ function newGame() {
         existingSlots.forEach(function(slot) {
             slot.classList.add('is-resetting');
         });
-        setTimeout(_startNewGame, 240);
+        setTimeout(_startNewGame, 270);
     } else {
         _startNewGame();
     }
@@ -184,13 +184,13 @@ function drawRoom() {
     render();
     _isNewDeal = false;
 
-    // Animate flip for NON-carried new cards only
-    requestAnimationFrame(function() {
+    // Animate flip for NON-carried new cards only — wait for drop-in to finish
+    setTimeout(function() {
         document.querySelectorAll('#room-grid .card-slot.is-new-deal').forEach(function(slot) {
             slot.classList.add('is-flipped');
         });
         SFX.play('deal');
-    });
+    }, 260);
     Achievements.check('turn', { turn: gs.turnCount });
 }
 
@@ -211,7 +211,7 @@ function avoidRoom() {
         slots.forEach(function(slot) {
             slot.classList.add('is-resetting');
         });
-        setTimeout(_avoidRoomNow, 200);
+        setTimeout(_avoidRoomNow, 260);
     } else {
         _avoidRoomNow();
     }

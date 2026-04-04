@@ -117,6 +117,11 @@
             <!-- Cards injected by JS: 4 × .card-slot -->
           </div>
 
+          <!-- Mobile swipe hint (shown once) -->
+          <p class="swipe-hint" id="swipe-hint" aria-hidden="true" hidden>
+            ← swipe left to avoid  ⋅  swipe up to confirm selection
+          </p>
+
           <!-- Potion-used notice -->
           <p class="potion-notice" id="potion-notice" aria-live="polite" hidden>
             Potion already used this room — further potions are discarded.
@@ -125,9 +130,6 @@
 
         <!-- Avoid action bar -->
         <div class="avoid-bar">
-          <p class="room-hint" id="room-hint" aria-live="polite">
-            Choose <strong>3</strong> cards to resolve — the 4th carries forward to the next room.
-          </p>
           <div class="action-bar-buttons">
             <button class="btn btn-face" id="btn-face"
                     aria-label="Face the selected cards"
@@ -141,6 +143,9 @@
               <span class="avoid-badge" id="avoid-badge" aria-hidden="true" hidden>✗</span>
             </button>
           </div>
+          <p class="room-hint" id="room-hint" aria-live="polite">
+            Choose <strong>3</strong> cards to resolve — the 4th carries forward to the next room.
+          </p>
         </div>
 
         <!-- Action log -->
@@ -200,6 +205,8 @@
         </div>
 
         <div class="settings-body">
+
+          <!-- Sound effects toggle + SFX volume -->
           <div class="settings-row">
             <label class="settings-label" for="toggle-sound">
               <span class="settings-label-icon">🔊</span>
@@ -213,7 +220,41 @@
               <span class="toggle-track" aria-hidden="true"></span>
             </label>
           </div>
+          <div class="settings-row settings-row--slim">
+            <label class="settings-vol-label" for="slider-sfx-vol">
+              <span class="settings-label-icon">🔉</span>SFX
+            </label>
+            <input type="range" id="slider-sfx-vol" class="vol-slider"
+                   min="0" max="100" value="90"
+                   aria-label="SFX volume" />
+            <output for="slider-sfx-vol" class="vol-output" id="out-sfx-vol">90</output>
+          </div>
 
+          <!-- Background music toggle + music volume -->
+          <div class="settings-row">
+            <label class="settings-label" for="toggle-music">
+              <span class="settings-label-icon">🎵</span>
+              <span class="settings-label-text">
+                <strong>Background music</strong>
+                <small>Ambient dungeon atmosphere</small>
+              </span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-music" checked />
+              <span class="toggle-track" aria-hidden="true"></span>
+            </label>
+          </div>
+          <div class="settings-row settings-row--slim">
+            <label class="settings-vol-label" for="slider-music-vol">
+              <span class="settings-label-icon">🎻</span>Music
+            </label>
+            <input type="range" id="slider-music-vol" class="vol-slider"
+                   min="0" max="100" value="22"
+                   aria-label="Music volume" />
+            <output for="slider-music-vol" class="vol-output" id="out-music-vol">22</output>
+          </div>
+
+          <!-- Animations toggle -->
           <div class="settings-row">
             <label class="settings-label" for="toggle-motion">
               <span class="settings-label-icon">✨</span>
@@ -230,6 +271,7 @@
 
           <hr class="settings-divider" />
 
+          <!-- Reset progress -->
           <div class="settings-row settings-row--danger">
             <span class="settings-label">
               <span class="settings-label-icon">🗑️</span>

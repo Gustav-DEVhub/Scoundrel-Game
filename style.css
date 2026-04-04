@@ -224,8 +224,9 @@ table {
   display: flex;
   flex-direction: column;
   align-items:    center;
-  gap:     var(--sp-5);
-  padding-block: var(--sp-5);
+  gap:     var(--sp-2);
+  padding-block-start: var(--sp-2);
+  padding-block-end:   var(--sp-4);
   width: 100%;
 }
 
@@ -380,7 +381,7 @@ table {
   display:        flex;
   flex-direction: column;
   align-items:    center;
-  gap:            var(--sp-4);
+  gap:            var(--sp-2);
   width:          100%;
 }
 
@@ -797,13 +798,13 @@ table {
 /* ───────────────────────────────────────────────────────────────
    9. ACTION LOG
 ─────────────────────────────────────────────────────────────────*/
-/* Avoid button bar — centered between room and log */
+/* Avoid button bar — close under the card grid */
 .avoid-bar {
   display:         flex;
   flex-direction:  column;
   align-items:     center;
-  gap:             var(--sp-3);
-  padding:         var(--sp-4) 0 var(--sp-2);
+  gap:             var(--sp-2);
+  padding:         var(--sp-2) 0 var(--sp-1);
 }
 
 /* Button row inside the avoid-bar */
@@ -815,13 +816,14 @@ table {
   justify-content: center;
 }
 
-/* Instruction hint above Avoid Room button */
+/* Instruction hint — now shown BELOW the action buttons */
 .room-hint {
-  font-size:   var(--fs-sm);
-  color:       var(--clr-text-muted);
+  font-size:   var(--fs-xs);
+  color:       var(--clr-text-dim);
   text-align:  center;
   margin:      0;
   line-height: 1.4;
+  opacity:     0.8;
 }
 .room-hint strong {
   color:       var(--clr-text);
@@ -829,36 +831,48 @@ table {
 }
 
 .log-section {
-  display:        flex;
-  flex-direction: column;
-  gap:            var(--sp-2);
-  margin-top:     var(--sp-2);
+  display:         flex;
+  flex-direction:  column;
+  gap:             var(--sp-2);
+  flex:            1;          /* fills all remaining vertical space */
+  min-height:      0;          /* allows flex child to shrink below content size */
+  width:           100%;
 }
 
 .log-heading {
-  font-size:   var(--fs-sm);
-  font-family: var(--font-sans);
-  font-weight: 700;
+  font-size:      var(--fs-sm);
+  font-family:    var(--font-sans);
+  font-weight:    700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color:       var(--clr-text-muted);
+  color:          var(--clr-text-muted);
+  padding-bottom: var(--sp-1);
+  border-bottom:  1px solid var(--clr-border);
 }
 
 .log-scroll {
-  height:     180px;
+  flex:       1;
+  min-height: 160px;
   overflow-y: auto;
-  background: var(--clr-surface);
-  border:     1px solid var(--clr-border);
+  background: var(--clr-surface-2);
+  border:     1px solid var(--clr-border-light);
   border-radius: var(--radius-md);
   padding:    var(--sp-3) var(--sp-4);
   font-family:var(--font-mono);
   font-size:  var(--fs-sm);
   scroll-behavior: smooth;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--clr-border-light) transparent;
 }
 .log-scroll::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  width: 4px;
+}
+.log-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.log-scroll::-webkit-scrollbar-thumb {
+  background:    var(--clr-border-light);
+  border-radius: var(--radius-pill);
 }
 
 .log-list {
@@ -1481,11 +1495,17 @@ table {
 
   .log-section {
     width:     100%;
-    max-width: 720px;
+    max-width: 860px; /* wider than before to match bigger card grid */
+    /* flex: 1 from base makes height fill remaining space */
   }
+  /* No fixed height on log-scroll — flex: 1 from base handles it */
+}
 
-  .log-scroll {
-    height: 220px;
+/* ── ≥ 900 px: bigger cards ── */
+@media (min-width: 900px) {
+  :root {
+    --card-w:   200px;
+    --card-gap: var(--sp-4); /* 16px × 3 gaps + 200px × 4 = 848px, fits > 880px */
   }
 }
 
@@ -2040,4 +2060,185 @@ table {
   background:    color-mix(in srgb, #e05 12%, transparent);
   border-color:  color-mix(in srgb, #e05 55%, transparent);
 }
+
+
+/* ════════════════════════════════════════════════════════════
+   §25 — TOUCH & MOBILE IMPROVEMENTS
+════════════════════════════════════════════════════════════ */
+
+/* Eliminate 300 ms tap delay on all interactive elements */
+.btn,
+.card-slot,
+.card-front,
+input[type="range"],
+input[type="checkbox"],
+label {
+  touch-action: manipulation;
+}
+
+/* Minimum 44 × 44 px touch targets (WCAG 2.5.5) */
+.btn      { min-height: 44px; }
+.btn-icon { min-width: 44px; min-height: 44px; }
+
+/* Active tap feedback on cards (hover doesn't fire reliably on mobile) */
+.card-front:active {
+  opacity: 0.82;
+  transition: opacity 60ms;
+}
+
+/* ── Sticky action bar on mobile ──────────────────────────── */
+@media (max-width: 680px) {
+  .avoid-bar {
+    position:   sticky;
+    bottom:     env(safe-area-inset-bottom, 0px);
+    background: var(--clr-bg);
+    padding:    var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--clr-border);
+    z-index:    100;
+    margin-inline: calc(-1 * var(--sp-4)); /* bleed to edges inside padding */
+  }
+
+  /* Wider hit area for buttons in the bar */
+  .action-bar-buttons .btn {
+    flex:       1;
+    min-height: 52px;
+    font-size:  var(--fs-sm);
+  }
+
+  /* Card tap: stronger visual feedback on small screens */
+  .card-slot { -webkit-tap-highlight-color: transparent; }
+
+  /* Log: fixed height on mobile (page scrolls, no viewport flex there) */
+  .log-scroll { flex: none; height: 200px; }
+
+  /* Hide hint text on mobile — swipe hint serves that purpose */
+  .room-hint { display: none; }
+
+  /* HUD blocks: smaller font to prevent overflow */
+  .hud-value     { font-size: var(--fs-sm); }
+  .hud-sub-value { font-size: var(--fs-xs); }
+}
+
+/* ── 360 px phones: keep cards readable ─────────────────── */
+@media (max-width: 360px) {
+  :root { --card-w: 128px; --card-gap: var(--sp-2); }
+  .room-grid  { gap: var(--sp-2); }
+  .hud-label  { display: none; }  /* hide labels to save space */
+}
+
+/* ── Landscape on small phones ───────────────────────────── */
+@media (max-height: 480px) and (orientation: landscape) {
+  :root { --card-w: 90px; }
+  .hud          { padding-block: var(--sp-1); }
+  .log-scroll   { flex: none; height: 80px; }
+  .room-grid    { gap: var(--sp-2); }
+  .hud-controls { display: none; }  /* hide controls row in landscape; use hud-toggle */
+}
+
+/* Safe area insets for notched / gesture-bar phones */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  body { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ── Swipe hint (mobile only, shown once via JS) ─────────── */
+.swipe-hint {
+  display:     flex;
+  align-items: center;
+  justify-content: center;
+  gap:         var(--sp-2);
+  font-size:   var(--fs-xs);
+  color:       var(--clr-text-muted);
+  background:  color-mix(in srgb, var(--clr-surface-2) 85%, transparent);
+  border:      1px solid var(--clr-border);
+  border-radius: var(--radius-pill);
+  padding:     var(--sp-1) var(--sp-4);
+  margin-top:  var(--sp-2);
+  animation:   overlay-in 0.4s var(--ease-out) both;
+  cursor:      pointer;
+  user-select: none;
+}
+.swipe-hint[hidden] { display: none; }
+
+/* Only show swipe hint on touch devices */
+@media (hover: hover) {
+  .swipe-hint { display: none !important; }
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   §26 — VOLUME SLIDERS (Settings panel)
+════════════════════════════════════════════════════════════ */
+
+/* Slim settings row for sliders (less vertical padding than toggle rows) */
+.settings-row--slim {
+  padding-block: var(--sp-1) var(--sp-2);
+  padding-inline: var(--sp-2);
+  gap:           var(--sp-3);
+  align-items:   center;
+  display:       flex;
+}
+
+.settings-vol-label {
+  display:     flex;
+  align-items: center;
+  gap:         var(--sp-2);
+  font-size:   var(--fs-xs);
+  color:       var(--clr-text-muted);
+  min-width:   3.8rem;
+  white-space: nowrap;
+}
+
+/* Range input — cross-browser styled */
+.vol-slider {
+  flex:          1;
+  -webkit-appearance: none;
+  appearance:    none;
+  height:        4px;
+  border-radius: var(--radius-pill);
+  background:    var(--clr-border);
+  outline:       none;
+  cursor:        pointer;
+  transition:    background var(--dur-fast);
+}
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width:         16px;
+  height:        16px;
+  border-radius: 50%;
+  background:    var(--clr-accent);
+  border:        2px solid var(--clr-bg);
+  cursor:        pointer;
+  box-shadow:    0 0 4px rgba(0,0,0,0.4);
+  transition:    transform var(--dur-fast);
+}
+.vol-slider::-webkit-slider-thumb:hover,
+.vol-slider::-webkit-slider-thumb:active {
+  transform: scale(1.25);
+}
+.vol-slider::-moz-range-thumb {
+  width:         16px;
+  height:        16px;
+  border-radius: 50%;
+  background:    var(--clr-accent);
+  border:        2px solid var(--clr-bg);
+  cursor:        pointer;
+}
+.vol-slider:focus-visible {
+  outline:        2px solid var(--clr-accent);
+  outline-offset: 4px;
+  border-radius:  var(--radius-pill);
+}
+
+/* Numeric output badge */
+.vol-output {
+  font-size:    var(--fs-xs);
+  font-family:  var(--font-mono);
+  color:        var(--clr-text-muted);
+  min-width:    2.2rem;
+  text-align:   right;
+}
+.vol-output::after { content: '%'; }
+
+/* Make settings dialog a bit wider to fit sliders */
+.dialog-box--settings { max-width: 420px; }
 

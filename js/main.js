@@ -146,7 +146,17 @@ function _startNewGame() {
     log('New game started — good luck, scoundrel.', 'log-system');
     SFX.play('newGame');
     Achievements.resetSession();
+    // Start / reset BGM to normal dungeon mood
+    if (typeof BGM !== 'undefined') {
+        if (!BGM.isPlaying()) BGM.start();
+        else BGM.setMood('dungeon');
+    }
     drawRoom();
+}
+
+function updateBgmMood() {
+    if (typeof BGM === 'undefined' || gs.isGameOver) return;
+    BGM.setMood(gs.health <= 5 ? 'danger' : 'dungeon');
 }
 
 function drawRoom() {
@@ -341,6 +351,7 @@ function resolveCard(cardIndex) {
             SFX.play('heal');
             Particles.burstFromElement(document.getElementById('health-bar-fill'), 'heal', 16);
             if (gs.health === CFG.MAX_HEALTH) Achievements.check('heal_full');
+            updateBgmMood();
         } else {
             message  = '\u2665' + card.value + ' discarded \u2014 only 1 potion per room.';
             logClass = 'log-system';
@@ -399,6 +410,7 @@ function resolveCard(cardIndex) {
         if (gs.health <= 0 && !gs.killingCard) gs.killingCard = Object.assign({}, card);
         if (gs.health > 0) Achievements.check('low_hp', { health: gs.health });
         if (card.value === 14) Achievements.check('dragon_slayer');
+        updateBgmMood();
     }
 
     gs.room.splice(cardIndex, 1);
@@ -458,6 +470,7 @@ function checkEndGame() {
         gs.score = -remaining.reduce(function(sum, c) { return sum + c.value; }, 0);
         log('Defeated! Score: ' + gs.score, 'log-lose');
         SFX.play('defeat');
+        if (typeof BGM !== 'undefined') BGM.stop();
         Leaderboard.add(gs.score, 'lose', gs.turnCount);
         setTimeout(showEndGame, 600);
         return;
@@ -469,6 +482,7 @@ function checkEndGame() {
         gs.score      = gs.health + weaponBonus;
         log('Victory! Dungeon cleared. Score: ' + gs.score + ' (HP ' + gs.health + (weaponBonus ? ' + weapon ' + weaponBonus : '') + ')', 'log-win');
         SFX.play('victory');
+        if (typeof BGM !== 'undefined') BGM.stop();
         Achievements.check('win', { turns: gs.turnCount, score: gs.score });
         Leaderboard.add(gs.score, 'win', gs.turnCount);
         var roomEl = document.getElementById('room-grid');
@@ -821,11 +835,56 @@ function trapFocus(overlayEl) {
 function showSettings() {
     var overlay = document.getElementById('overlay-settings');
     if (!overlay) return;
-    // Sync toggles with current state
+    // Sync all controls with current runtime state
     document.getElementById('toggle-sound').checked  = !SFX.isMuted();
     document.getElementById('toggle-motion').checked = !document.body.classList.contains('reduce-motion');
+    var tMusic = document.getElementById('toggle-music');
+    if (tMusic) tMusic.checked = !BGM.isMuted();
+    var sSfx = document.getElementById('slider-sfx-vol');
+    if (sSfx) sSfx.value = Math.round(SFX.getVolume() * 100);
+    var sMus = document.getElementById('slider-music-vol');
+    if (sMus) sMus.value = Math.round(BGM.getVolume() * 100);
     overlay.hidden = false;
     document.getElementById('btn-settings-close').focus();
+}
+
+/* ── Touch / swipe controls ─────────────────────────────── */
+function setupTouchControls() {
+    var grid = document.getElementById('room-grid');
+    if (!grid || !('ontouchstart' in window)) return;
+
+    var tx = 0, ty = 0, ts = 0;
+    var DIST = 50, TIME = 380; // px and ms thresholds
+
+    grid.addEventListener('touchstart', function (e) {
+        tx = e.touches[0].clientX;
+        ty = e.touches[0].clientY;
+        ts = Date.now();
+    }, { passive: true });
+
+    grid.addEventListener('touchend', function (e) {
+        if (!e.changedTouches.length) return;
+        var dx = e.changedTouches[0].clientX - tx;
+        var dy = e.changedTouches[0].clientY - ty;
+        if (Date.now() - ts > TIME) return;
+        var ax = Math.abs(dx), ay = Math.abs(dy);
+        if (ax < DIST && ay < DIST) return; // tap, not swipe
+        if (ax > ay * 1.4 && dx < 0) { // swipe left → avoid
+            avoidRoom(); return;
+        }
+        if (ay > ax * 1.4 && dy < 0) { // swipe up → face selected
+            if (gs.selectedCards.length >= CFG.ROOM_SIZE - 1) resolveCurrentRoom();
+        }
+    }, { passive: true });
+
+    // Show swipe hint once, then dismiss
+    var hint = document.getElementById('swipe-hint');
+    if (hint && !localStorage.getItem('scoundrel_swipe_v1')) {
+        hint.hidden = false;
+        setTimeout(function () { hint.hidden = true; }, 4000);
+        hint.addEventListener('click', function () { hint.hidden = true; });
+        localStorage.setItem('scoundrel_swipe_v1', '1');
+    }
 }
 function hideSettings() {
     document.getElementById('overlay-settings').hidden = true;
@@ -851,6 +910,7 @@ function hideOnboarding() {
 }
 
 function setupEvents() {
+    setupTouchControls();
     document.querySelectorAll('.btn').forEach(function (b) { b.addEventListener('click', addRipple); });
 
     // Trap focus in all dialog overlays
@@ -908,12 +968,42 @@ function setupEvents() {
     });
     document.getElementById('btn-mute').addEventListener('click', function() {
         var muted = SFX.toggle();
+        BGM.toggle(); // mute/unmute music together
         this.textContent = muted ? '🔇' : '🔊';
         this.setAttribute('aria-label', muted ? 'Unmute sounds' : 'Mute sounds');
-        // Keep settings toggle in sync
+        // Keep settings toggles in sync
         var t = document.getElementById('toggle-sound');
         if (t) t.checked = !muted;
+        var tm = document.getElementById('toggle-music');
+        if (tm) tm.checked = !BGM.isMuted();
     });
+
+    // Music toggle in settings
+    var toggleMusic = document.getElementById('toggle-music');
+    if (toggleMusic) {
+        toggleMusic.addEventListener('change', function() {
+            var shouldMute = !this.checked;
+            if (shouldMute !== BGM.isMuted()) BGM.toggle();
+        });
+    }
+    // SFX volume slider + live output
+    var sliderSfx = document.getElementById('slider-sfx-vol');
+    if (sliderSfx) {
+        sliderSfx.addEventListener('input', function() {
+            SFX.setVolume(Number(this.value) / 100);
+            var out = document.getElementById('out-sfx-vol');
+            if (out) out.value = this.value;
+        });
+    }
+    // Music volume slider + live output
+    var sliderMus = document.getElementById('slider-music-vol');
+    if (sliderMus) {
+        sliderMus.addEventListener('input', function() {
+            BGM.setVolume(Number(this.value) / 100);
+            var out = document.getElementById('out-music-vol');
+            if (out) out.value = this.value;
+        });
+    }
 
     document.getElementById('btn-onboard-start').addEventListener('click', function() {
         hideOnboarding();
@@ -993,6 +1083,11 @@ function init() {
             setTimeout(function() { banner.hidden = true; }, 3500);
         }
         log('Session restored. Continue your run.', 'log-system');
+        // Start BGM once the user interacts (required by browser autoplay policy)
+        document.addEventListener('click', function startBgmOnce() {
+            if (!BGM.isPlaying()) BGM.start();
+            document.removeEventListener('click', startBgmOnce);
+        }, { once: true });
         render();
         requestAnimationFrame(function() {
             document.querySelectorAll('#room-grid .card-slot').forEach(function(slot) {

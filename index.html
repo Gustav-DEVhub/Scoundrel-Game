@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -66,16 +66,28 @@
         </div>
 
         <!-- Controls -->
-        <div class="hud-block hud-controls">
+        <div class="hud-block hud-controls" id="hud-controls">
           <button class="btn btn-primary" id="btn-new-game"
                   aria-label="Start a new game">New Game</button>
-          <button class="btn btn-secondary" id="btn-restart"
-                  aria-label="Restart from saved state">Restart</button>
+          <button class="btn btn-secondary" id="btn-leaderboard"
+                  aria-label="View leaderboard" aria-haspopup="dialog">🏆 Scores</button>
+          <button class="btn btn-secondary" id="btn-achievements"
+                  aria-label="View achievements" aria-haspopup="dialog">⭐ Deeds</button>
+          <button class="btn btn-mute" id="btn-mute"
+                  aria-label="Mute sounds">🔊</button>
+          <button class="btn btn-settings" id="btn-settings"
+                  aria-label="Open settings" aria-haspopup="dialog">⚙️</button>
           <button class="btn btn-help" id="btn-help"
                   aria-label="Open rules and help" aria-haspopup="dialog">
             Help / Rules
           </button>
         </div>
+
+        <!-- Mobile-only toggle for controls -->
+        <button class="btn btn-hud-toggle" id="btn-hud-toggle"
+                aria-label="Show or hide controls"
+                aria-expanded="false"
+                aria-controls="hud-controls">&#9660;</button>
 
       </header>
 
@@ -83,6 +95,12 @@
            MAIN CONTENT
       ───────────────────────────────────────── -->
       <main id="main-content">
+
+        <!-- Save indicator + resume banner -->
+        <div class="status-bar">
+          <span id="save-indicator" class="save-indicator" aria-live="polite" aria-label="Game saved">💾 Saved</span>
+          <span id="resume-banner" class="resume-banner" aria-live="polite" hidden></span>
+        </div>
 
         <!-- Room -->
         <section id="room" class="room-section" aria-label="Current room">
@@ -142,6 +160,125 @@
     </div><!-- /#app -->
 
     <!-- ═══════════════════════════════════════════════
+         ONBOARDING OVERLAY
+    ═══════════════════════════════════════════════ -->
+    <div class="overlay overlay--onboarding" id="overlay-onboarding"
+         role="dialog" aria-modal="true"
+         aria-labelledby="onboard-title"
+         hidden>
+      <div class="dialog-box dialog-box--onboarding">
+        <div class="onboard-sigil" aria-hidden="true">⚔️</div>
+        <h2 id="onboard-title" class="dialog-title">Welcome, Scoundrel</h2>
+        <p class="dialog-desc">A dungeon awaits. Fight through every room or die trying.</p>
+        <ul class="onboard-features">
+          <li><span class="onboard-icon">♦️</span><span>Equip weapons to reduce monster damage</span></li>
+          <li><span class="onboard-icon">♥️</span><span>Drink potions — but only once per room</span></li>
+          <li><span class="onboard-icon">♣️</span><span>Choose 3 cards each room — leave 1 behind</span></li>
+          <li><span class="onboard-icon">🏆</span><span>Clear the whole deck to claim victory</span></li>
+        </ul>
+        <div class="dialog-actions">
+          <button class="btn btn-primary btn-onboard-start" id="btn-onboard-start">
+            Begin Adventure
+          </button>
+        </div>
+        <p class="onboard-hint">Press <kbd>H</kbd> anytime for full rules</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SETTINGS OVERLAY
+    ═══════════════════════════════════════════════ -->
+    <div class="overlay" id="overlay-settings"
+         role="dialog" aria-modal="true"
+         aria-labelledby="settings-title"
+         hidden>
+      <div class="dialog-box dialog-box--settings">
+        <div class="dialog-header">
+          <h2 id="settings-title" class="dialog-title">⚙️ Settings</h2>
+          <button class="btn btn-icon btn-close" id="btn-settings-close"
+                  aria-label="Close settings">✕</button>
+        </div>
+
+        <div class="settings-body">
+          <div class="settings-row">
+            <label class="settings-label" for="toggle-sound">
+              <span class="settings-label-icon">🔊</span>
+              <span class="settings-label-text">
+                <strong>Sound effects</strong>
+                <small>Procedural audio cues</small>
+              </span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-sound" checked />
+              <span class="toggle-track" aria-hidden="true"></span>
+            </label>
+          </div>
+
+          <div class="settings-row">
+            <label class="settings-label" for="toggle-motion">
+              <span class="settings-label-icon">✨</span>
+              <span class="settings-label-text">
+                <strong>Animations</strong>
+                <small>Card flips, particles &amp; transitions</small>
+              </span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-motion" checked />
+              <span class="toggle-track" aria-hidden="true"></span>
+            </label>
+          </div>
+
+          <hr class="settings-divider" />
+
+          <div class="settings-row settings-row--danger">
+            <span class="settings-label">
+              <span class="settings-label-icon">🗑️</span>
+              <span class="settings-label-text">
+                <strong>Reset progress</strong>
+                <small>Clears scores &amp; achievements</small>
+              </span>
+            </span>
+            <button class="btn btn-danger" id="btn-reset-data">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         LEADERBOARD OVERLAY
+    ═══════════════════════════════════════════════ -->
+    <div class="overlay" id="overlay-leaderboard"
+         role="dialog" aria-modal="true"
+         aria-labelledby="lb-title"
+         hidden>
+      <div class="dialog-box dialog-box--leaderboard">
+        <div class="dialog-header">
+          <h2 id="lb-title" class="dialog-title">Hall of Scoundrels</h2>
+          <button class="btn btn-icon btn-close" id="btn-lb-close"
+                  aria-label="Close leaderboard">✕</button>
+        </div>
+        <ul class="lb-list" id="lb-list" aria-label="High scores"></ul>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         ACHIEVEMENTS OVERLAY
+    ═══════════════════════════════════════════════ -->
+    <div class="overlay" id="overlay-achievements"
+         role="dialog" aria-modal="true"
+         aria-labelledby="ach-title"
+         hidden>
+      <div class="dialog-box dialog-box--achievements">
+        <div class="dialog-header">
+          <h2 id="ach-title" class="dialog-title">Deeds &amp; Feats</h2>
+          <button class="btn btn-icon btn-close" id="btn-ach-close"
+                  aria-label="Close achievements">✕</button>
+        </div>
+        <div class="ach-grid" id="ach-grid"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
          END-GAME OVERLAY
     ═══════════════════════════════════════════════ -->
     <div class="overlay" id="overlay-endgame"
@@ -156,9 +293,13 @@
           <span class="score-label">Score</span>
           <span class="score-value" id="endgame-score">0</span>
         </div>
+        <!-- Killing card — shown only on defeat -->
+        <div class="killing-card-wrap" id="killing-card-wrap" hidden>
+          <p class="killing-card-label">Killed by</p>
+          <div class="killing-card" id="killing-card"></div>
+        </div>
         <div class="dialog-actions">
           <button class="btn btn-primary" id="btn-endgame-new">New Game</button>
-          <button class="btn btn-secondary" id="btn-endgame-restart">Restart</button>
         </div>
       </div>
     </div>
@@ -182,65 +323,73 @@
           <div class="help-step">
             <span class="help-step-num">1</span>
             <div>
-              <h3>Start the game</h3>
-              <p>Press <strong>New Game</strong>. Four cards are dealt face-up in the room.
-                 Your hero starts with <strong>20 HP</strong>.</p>
+              <h3>The goal</h3>
+              <p>You are a scoundrel fighting through a dungeon one room at a time.
+                 Clear every card in the deck without losing all your <strong>20 HP</strong> to win.</p>
             </div>
           </div>
 
           <div class="help-step">
             <span class="help-step-num">2</span>
             <div>
-              <h3>Resolve 3 of the 4 cards</h3>
-              <p><strong>Click any card</strong> to interact with it. You must resolve exactly 3 cards
-                 — the one you leave behind carries forward into the next room.</p>
-              <ul>
-                <li>♥ <strong>Potion</strong> — heals you by its value (max 20 HP).
-                    Only <em>one potion heals per room</em>; extras are discarded.</li>
-                <li>♦ <strong>Weapon</strong> — equip it. Your old weapon is discarded.</li>
-                <li>♣ / ♠ <strong>Monster</strong> — you take damage equal to its value
-                    <em>unless</em> your weapon's value is higher (see below).</li>
-              </ul>
+              <h3>Each room</h3>
+              <p>Four cards are dealt. <strong>Select 3</strong> of them and press
+                 <strong>Face Selected</strong> to resolve them. The card you leave behind
+                 carries into the next room — choose wisely.</p>
             </div>
           </div>
 
           <div class="help-step">
             <span class="help-step-num">3</span>
             <div>
-              <h3>Using your weapon against monsters</h3>
-              <p>If you have a weapon equipped, it absorbs damage:
-                 <strong>damage = monster value − weapon value</strong> (minimum 0).</p>
-              <p>⚠️ <em>The weapon can only fight a monster whose value is
-                 equal to or lower than the last monster it defeated.</em>
-                 If the new monster is stronger, you fight bare-handed and take full damage.</p>
-              <p class="help-example">Example: Weapon ♦7 defeats ♣9 → 2 damage taken.
-                 Next you can fight ♣9 or lower using the weapon.
-                 A ♠J would deal 11 damage bare-handed.</p>
+              <h3>Card types</h3>
+              <ul>
+                <li>♥ <strong>Potion</strong> — restores HP equal to its value (up to 20 HP max).
+                    Only the first potion heals each room; any extras are wasted.</li>
+                <li>♦ <strong>Weapon</strong> — equip it to reduce monster damage.
+                    Picking up a new weapon replaces your old one.</li>
+                <li>♣ ♠ <strong>Monster</strong> — deals damage equal to its value.
+                    A weapon reduces that damage (see below).</li>
+              </ul>
             </div>
           </div>
 
           <div class="help-step">
             <span class="help-step-num">4</span>
             <div>
-              <h3>Or avoid the room</h3>
-              <p>Press <strong>Avoid Room</strong> to send all 4 cards to the bottom of the deck
-                 and draw a fresh room. <em>You cannot avoid two rooms in a row.</em></p>
+              <h3>Fighting with a weapon</h3>
+              <p>When you fight a monster, <strong>damage = monster value − weapon value</strong> (minimum 0).</p>
+              <p>⚠️ Your weapon can only be used against a monster whose value is
+                 <em>strictly lower</em> than the last one it defeated.
+                 If the monster is equal or stronger, your weapon <strong>breaks</strong>
+                 and you take full damage.</p>
+              <p class="help-example">Example: ♦7 defeats ♣9 → 2 damage taken, last defeated = 9.
+                 Next fight: ♣8 ✔ (weapon works) · ♣9 ✘ (weapon breaks, 9 damage).</p>
             </div>
           </div>
 
           <div class="help-step">
             <span class="help-step-num">5</span>
             <div>
-              <h3>Win or lose</h3>
+              <h3>Avoiding a room</h3>
+              <p>Press <strong>Avoid Room</strong> to send all 4 cards to the bottom of the deck
+                 and draw a new room. You <em>cannot avoid two rooms in a row</em>.</p>
+            </div>
+          </div>
+
+          <div class="help-step">
+            <span class="help-step-num">6</span>
+            <div>
+              <h3>Victory &amp; defeat</h3>
               <ul>
-                <li>🏆 <strong>Win</strong> — clear the entire deck. Score = your remaining HP.</li>
-                <li>💀 <strong>Lose</strong> — HP drops to 0. Score = negative monster total still in deck.</li>
+                <li>🏆 <strong>Win</strong> — empty the deck. Score = HP + equipped weapon value.</li>
+                <li>💀 <strong>Lose</strong> — reach 0 HP. Score = negative total value of monsters still in the deck.</li>
               </ul>
             </div>
           </div>
 
-          <h3 class="help-sub">The cards</h3>
-          <p>44 cards total — red face cards and red Aces are removed from a standard deck:</p>
+          <h3 class="help-sub">The deck</h3>
+          <p>44 cards — a standard deck with red face cards and red Aces removed:</p>
           <ul>
             <li>♣ ♠ 2–A → <strong>26 monsters</strong></li>
             <li>♦ 2–10 → <strong>9 weapons</strong></li>
@@ -253,8 +402,9 @@
             <tbody>
               <tr><td>N</td><td>New Game</td></tr>
               <tr><td>A</td><td>Avoid Room</td></tr>
-              <tr><td>1 – 4</td><td>Resolve card in slot</td></tr>
+              <tr><td>1 – 4</td><td>Select card in slot</td></tr>
               <tr><td>H / ?</td><td>Toggle Help &amp; Rules</td></tr>
+              <tr><td>L</td><td>Leaderboard</td></tr>
               <tr><td>Esc</td><td>Close overlay</td></tr>
             </tbody>
           </table>
@@ -266,6 +416,10 @@
     <!-- ═══════════════════════════════════════════════
          SCRIPTS
     ═══════════════════════════════════════════════ -->
+    <script src="js/audio.js"></script>
+    <script src="js/particles.js"></script>
+    <script src="js/achievements.js"></script>
+    <script src="js/leaderboard.js"></script>
     <script src="js/main.js"></script>
 
   </body>

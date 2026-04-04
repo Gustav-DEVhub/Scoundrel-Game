@@ -46,6 +46,7 @@ function freshState() {
         resolvedThisRoom:    0,
         selectedCards:       [],
         carriedCard:         null,
+        killingCard:         null,
         turnCount:           0,
         isGameOver:          false,
         gameResult:          null,
@@ -123,24 +124,29 @@ function fisherYatesShuffle(arr, fn) {
 ═══════════════════════════════════════════════════════════════ */
 
 function newGame() {
+    // Smooth reset: flip current cards back, then deal a fresh room
+    var existingSlots = document.querySelectorAll(
+        '#room-grid .card-slot:not(.card-slot--empty):not(.is-resetting)'
+    );
+    if (existingSlots.length > 0) {
+        existingSlots.forEach(function(slot) {
+            slot.classList.add('is-resetting');
+        });
+        setTimeout(_startNewGame, 240);
+    } else {
+        _startNewGame();
+    }
+}
+
+function _startNewGame() {
     gs = freshState();
     gs.deck = createDeck();
     localStorage.removeItem(CFG.STORAGE_KEY);
     logClear();
     log('New game started — good luck, scoundrel.', 'log-system');
+    SFX.play('newGame');
+    Achievements.resetSession();
     drawRoom();
-}
-
-function restartGame() {
-    const saved = loadGame();
-    if (!saved) {
-        log('No saved game found — starting fresh.', 'log-system');
-        newGame();
-        return;
-    }
-    gs = saved;
-    log('Session restored. Continue your run.', 'log-system');
-    render();
 }
 
 function drawRoom() {
@@ -160,6 +166,7 @@ function drawRoom() {
     gs.selectedCards      = [];
     gs.carriedCard        = null;
     gs.turnCount++;
+    if (gs.turnCount > 1) logTurnDivider(gs.turnCount);
     saveGame();
 
     // Mark as new deal so renderRoom starts cards face-down (for flip animation)
@@ -169,10 +176,12 @@ function drawRoom() {
 
     // Animate flip for NON-carried new cards only
     requestAnimationFrame(function() {
-        document.querySelectorAll('#room-grid .card-slot.is-new-deal').forEach(function(slot, i) {
-            setTimeout(function() { slot.classList.add('is-flipped'); }, i * 80 + 40);
+        document.querySelectorAll('#room-grid .card-slot.is-new-deal').forEach(function(slot) {
+            slot.classList.add('is-flipped');
         });
+        SFX.play('deal');
     });
+    Achievements.check('turn', { turn: gs.turnCount });
 }
 
 function avoidRoom() {
@@ -185,9 +194,25 @@ function avoidRoom() {
         log('Cannot avoid — room is incomplete.', 'log-system');
         return;
     }
+    var slots = document.querySelectorAll(
+        '#room-grid .card-slot:not(.card-slot--empty):not(.is-resetting)'
+    );
+    if (slots.length > 0) {
+        slots.forEach(function(slot) {
+            slot.classList.add('is-resetting');
+        });
+        setTimeout(_avoidRoomNow, 200);
+    } else {
+        _avoidRoomNow();
+    }
+}
+
+function _avoidRoomNow() {
     gs.deck = gs.room.concat(gs.deck);
     gs.room = [];
     gs.lastActionWasAvoid = true;
+    SFX.play('avoid');
+    Achievements.check('avoid');
     log('Avoided the room — all cards sent to the bottom of the deck.', 'log-avoid');
     drawRoom();
 }
@@ -202,6 +227,7 @@ function toggleCardSelection(index) {
     if (pos !== -1) {
         // Already selected — deselect
         gs.selectedCards.splice(pos, 1);
+        SFX.play('deselect');
     } else {
         // Select only if under the 3-card limit
         if (gs.selectedCards.length >= CFG.ROOM_SIZE - 1) {
@@ -209,6 +235,7 @@ function toggleCardSelection(index) {
             return;
         }
         gs.selectedCards.push(index);
+        SFX.play('select');
     }
     render();
     updateUIState();
@@ -233,15 +260,26 @@ function resolveCurrentRoom() {
         return gs.room[idx];
     });
 
+    SFX.play('flip');
+
+    // Animate selected cards flipping back before resolution
+    gs.selectedCards.forEach(function(idx) {
+        var btn = document.querySelector('#room-grid .card-front[data-index="' + idx + '"]');
+        if (btn && btn.parentElement && btn.parentElement.parentElement) {
+            btn.parentElement.parentElement.classList.add('is-resolving');
+        }
+    });
+
     // 3. Clear selection visually before processing
     gs.selectedCards = [];
 
-    // 4. Process each card; resolveCard() handles all game rules,
-    //    logging, HP changes, weapon equip and the drawRoom() trigger.
-    toResolve.forEach(function(card) {
-        var currentIdx = gs.room.indexOf(card);
-        if (currentIdx !== -1) resolveCard(currentIdx);
-    });
+    // 4. Process each card after a short flip animation
+    setTimeout(function() {
+        toResolve.forEach(function(card) {
+            var currentIdx = gs.room.indexOf(card);
+            if (currentIdx !== -1) resolveCard(currentIdx);
+        });
+    }, 220);
 }
 
 function updateUIState() {
@@ -288,6 +326,9 @@ function resolveCard(cardIndex) {
         // lastDefeated starts at Infinity so the first monster always triggers weapon use
         gs.equippedWeapon = Object.assign({}, card, { lastDefeated: Infinity, stack: [] });
         logClass = 'log-equip';
+        SFX.play('equip');
+        Achievements.check('equip');
+        Particles.burstFromElement(document.getElementById('weapon-display'), 'equip', 10);
 
     } else if (card.type === 'potion') {
         if (!gs.potionUsedThisRoom) {
@@ -297,9 +338,13 @@ function resolveCard(cardIndex) {
             gs.potionUsedThisRoom = true;
             message  = 'Drank \u2665' + card.value + ' \u2014 healed ' + healed + ' HP (' + gs.health + '/' + CFG.MAX_HEALTH + ').';
             logClass = 'log-heal';
+            SFX.play('heal');
+            Particles.burstFromElement(document.getElementById('health-bar-fill'), 'heal', 16);
+            if (gs.health === CFG.MAX_HEALTH) Achievements.check('heal_full');
         } else {
             message  = '\u2665' + card.value + ' discarded \u2014 only 1 potion per room.';
             logClass = 'log-system';
+            Achievements.check('potion_wasted');
         }
         gs.discard.push(card);
 
@@ -319,9 +364,13 @@ function resolveCard(cardIndex) {
             if (damage > 0) {
                 message  = card.suit + RANK_DISPLAY(card.value) + ' hit for ' + damage + ' dmg (weapon absorbed ' + (card.value - damage) + ').';
                 logClass = 'log-damage';
+                SFX.play('damage');
+                Particles.burstFromElement(document.getElementById('health-bar-fill'), 'damage', 10);
             } else {
                 message  = card.suit + RANK_DISPLAY(card.value) + ' fully blocked by \u2666' + gs.equippedWeapon.value + '!';
                 logClass = 'log-equip';
+                SFX.play('equip');
+                Achievements.check('weapon_block');
             }
         } else if (gs.equippedWeapon) {
             // Weapon exists but monster >= lastDefeated — weapon BREAKS
@@ -333,14 +382,23 @@ function resolveCard(cardIndex) {
             message  = '\u2620 ' + card.suit + RANK_DISPLAY(card.value) + ' overpowered the weapon! \u2666' + brokenWeapon.value + ' broke \u2014 ' + damage + ' damage!';
             logClass = 'log-damage';
             log('\u26A0\uFE0F The weapon broke!', 'log-system');
+            SFX.play('weaponBreak');
+            Achievements.check('weapon_break');
+            Particles.burstFromElement(document.getElementById('weapon-display'), 'damage', 14);
         } else {
             // No weapon — bare-handed
             damage = card.value;
             gs.discard.push(card);
             message  = card.suit + RANK_DISPLAY(card.value) + ' fought bare-handed \u2014 ' + damage + ' damage!';
             logClass = 'log-damage';
+            SFX.play(damage >= 8 ? 'damageHeavy' : 'damage');
+            Particles.burstFromElement(document.getElementById('health-bar-fill'), 'damage', 10);
+            Achievements.check('damage', { bare: true, amount: damage });
         }
         gs.health -= damage;
+        if (gs.health <= 0 && !gs.killingCard) gs.killingCard = Object.assign({}, card);
+        if (gs.health > 0) Achievements.check('low_hp', { health: gs.health });
+        if (card.value === 14) Achievements.check('dragon_slayer');
     }
 
     gs.room.splice(cardIndex, 1);
@@ -399,6 +457,8 @@ function checkEndGame() {
         var remaining = gs.deck.concat(gs.room).filter(function(c) { return c.type === 'monster'; });
         gs.score = -remaining.reduce(function(sum, c) { return sum + c.value; }, 0);
         log('Defeated! Score: ' + gs.score, 'log-lose');
+        SFX.play('defeat');
+        Leaderboard.add(gs.score, 'lose', gs.turnCount);
         setTimeout(showEndGame, 600);
         return;
     }
@@ -408,6 +468,14 @@ function checkEndGame() {
         var weaponBonus = gs.equippedWeapon ? gs.equippedWeapon.value : 0;
         gs.score      = gs.health + weaponBonus;
         log('Victory! Dungeon cleared. Score: ' + gs.score + ' (HP ' + gs.health + (weaponBonus ? ' + weapon ' + weaponBonus : '') + ')', 'log-win');
+        SFX.play('victory');
+        Achievements.check('win', { turns: gs.turnCount, score: gs.score });
+        Leaderboard.add(gs.score, 'win', gs.turnCount);
+        var roomEl = document.getElementById('room-grid');
+        if (roomEl) {
+            var r = roomEl.getBoundingClientRect();
+            Particles.burst(r.left + r.width / 2, r.top + r.height / 2, 'victory', 36);
+        }
         setTimeout(showEndGame, 600);
     }
 }
@@ -419,6 +487,15 @@ function checkEndGame() {
 
 function saveGame() {
     try { localStorage.setItem(CFG.STORAGE_KEY, JSON.stringify(gs)); } catch(_) {}
+    flashSaveIndicator();
+}
+
+function flashSaveIndicator() {
+    var el = document.getElementById('save-indicator');
+    if (!el) return;
+    el.classList.remove('is-saving');
+    void el.offsetWidth; // reflow to restart animation
+    el.classList.add('is-saving');
 }
 
 function loadGame() {
@@ -550,11 +627,13 @@ function createCardElement(card, index) {
     var slot = document.createElement('li');
     // During a new deal: non-carried cards start face-down (is-new-deal, no is-flipped yet).
     // Mid-room (player resolving cards): all cards already visible → add is-flipped immediately.
-    var classes = ['card-slot', 'card-slot--' + card.type, 'is-dealing'];
+    // Only animate the deal drop-in during actual new deals, NOT mid-room re-renders.
+    // Adding is-dealing on every render was causing visible card jumps on selection.
+    var classes = ['card-slot', 'card-slot--' + card.type];
     if (isCarried) {
         classes.push('is-carried', 'is-flipped');
     } else if (_isNewDeal) {
-        classes.push('is-new-deal'); // RAF in drawRoom() will add is-flipped with stagger
+        classes.push('is-dealing', 'is-new-deal'); // RAF in drawRoom() adds is-flipped
     } else {
         classes.push('is-flipped', 'is-instant-flip'); // mid-room: snap face-up, no transition
     }
@@ -593,7 +672,10 @@ function createCardElement(card, index) {
         '</div>';
 
     slot.querySelector('.card-front').addEventListener('click', function() {
-        if (!gs.isGameOver) toggleCardSelection(index);
+        if (!gs.isGameOver) {
+            Particles.burstFromElement(this, 'flip', 6);
+            toggleCardSelection(index);
+        }
     });
 
     return slot;
@@ -609,8 +691,20 @@ function log(message, cls) {
     var list = document.getElementById('log-list');
     var li   = document.createElement('li');
     li.className = ('log-entry ' + cls).trim();
-    var prefix = gs.turnCount > 0 ? '[T' + gs.turnCount + '] ' : '';
-    li.textContent = prefix + message;
+    li.textContent = message;
+    list.appendChild(li);
+    requestAnimationFrame(function() {
+        var scroll = document.getElementById('log-scroll');
+        scroll.scrollTop = scroll.scrollHeight;
+    });
+}
+
+function logTurnDivider(n) {
+    var list = document.getElementById('log-list');
+    var li   = document.createElement('li');
+    li.className = 'log-turn-divider';
+    li.setAttribute('aria-hidden', 'true');
+    li.innerHTML = '<span class="log-turn-label">Turn ' + n + '</span>';
     list.appendChild(li);
     requestAnimationFrame(function() {
         var scroll = document.getElementById('log-scroll');
@@ -646,6 +740,27 @@ function showEndGame() {
     scoreEl.textContent = gs.score;
     scoreEl.className   = 'score-value' + (gs.score < 0 ? ' negative' : '');
 
+    // Killing card — only displayed on defeat
+    var killingWrap = document.getElementById('killing-card-wrap');
+    var killingEl   = document.getElementById('killing-card');
+    if (gs.gameResult === 'lose' && gs.killingCard) {
+        var kc      = gs.killingCard;
+        var imgSrc  = getCardImage(kc);
+        var imgAttr = imgSrc ? ' style="background-image:url(\'' + imgSrc + '\')"' : '';
+        killingEl.className = 'killing-card killing-card--' + kc.type;
+        killingEl.innerHTML =
+            '<div class="killing-card-inner"' + imgAttr + '>' +
+              '<span class="card-tl" aria-hidden="true">' +
+                '<span class="card-rank">' + RANK_DISPLAY(kc.value) + '</span>' +
+                '<span class="card-suit-small">' + kc.suit + '</span>' +
+              '</span>' +
+            '</div>';
+        killingWrap.hidden = false;
+    } else {
+        killingEl.innerHTML = '';
+        killingWrap.hidden  = true;
+    }
+
     overlay.hidden = false;
     var firstBtn = overlay.querySelector('button');
     if (firstBtn) firstBtn.focus();
@@ -670,15 +785,147 @@ function hideHelp() {
   11.  EVENT LISTENERS
 ═══════════════════════════════════════════════════════════════ */
 
+/* ── Button ripple effect ──────────────────────────────── */
+function addRipple(e) {
+    var btn  = e.currentTarget;
+    var rect = btn.getBoundingClientRect();
+    var size = Math.max(rect.width, rect.height);
+    var x    = (e.clientX || rect.left + rect.width  / 2) - rect.left - size / 2;
+    var y    = (e.clientY || rect.top  + rect.height / 2) - rect.top  - size / 2;
+    var span = document.createElement('span');
+    span.className = 'btn-ripple';
+    span.style.cssText = 'width:' + size + 'px;height:' + size + 'px;left:' + x + 'px;top:' + y + 'px';
+    btn.appendChild(span);
+    setTimeout(function () { if (span.parentNode) span.parentNode.removeChild(span); }, 500);
+}
+
+/* ── Focus trap ─────────────────────────────────────────── */
+function trapFocus(overlayEl) {
+    var focusable = overlayEl.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable.length) return;
+    var first = focusable[0];
+    var last  = focusable[focusable.length - 1];
+    overlayEl.addEventListener('keydown', function onTrap(e) {
+        if (e.key !== 'Tab') return;
+        if (e.shiftKey) {
+            if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+            if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+        }
+    });
+}
+
+/* ── Settings ───────────────────────────────────────────── */
+function showSettings() {
+    var overlay = document.getElementById('overlay-settings');
+    if (!overlay) return;
+    // Sync toggles with current state
+    document.getElementById('toggle-sound').checked  = !SFX.isMuted();
+    document.getElementById('toggle-motion').checked = !document.body.classList.contains('reduce-motion');
+    overlay.hidden = false;
+    document.getElementById('btn-settings-close').focus();
+}
+function hideSettings() {
+    document.getElementById('overlay-settings').hidden = true;
+    document.getElementById('btn-settings').focus();
+}
+
+/* ── Onboarding ─────────────────────────────────────────── */
+var ONBOARD_KEY = 'scoundrel_welcomed_v1';
+function showOnboarding() {
+    var overlay = document.getElementById('overlay-onboarding');
+    if (!overlay) return;
+    overlay.hidden = false;
+    var btn = overlay.querySelector('button');
+    if (btn) btn.focus();
+    trapFocus(overlay);
+}
+function hideOnboarding() {
+    var overlay = document.getElementById('overlay-onboarding');
+    if (!overlay) return;
+    overlay.hidden = true;
+    localStorage.setItem(ONBOARD_KEY, '1');
+    newGame();
+}
+
 function setupEvents() {
+    document.querySelectorAll('.btn').forEach(function (b) { b.addEventListener('click', addRipple); });
+
+    // Trap focus in all dialog overlays
+    document.querySelectorAll('.overlay').forEach(trapFocus);
+
     document.getElementById('btn-new-game').addEventListener('click', newGame);
-    document.getElementById('btn-restart').addEventListener('click', restartGame);
     document.getElementById('btn-avoid').addEventListener('click', avoidRoom);
     document.getElementById('btn-face').addEventListener('click', function() {
         if (gs.selectedCards.length >= CFG.ROOM_SIZE - 1) resolveCurrentRoom();
     });
     document.getElementById('btn-help').addEventListener('click', showHelp);
     document.getElementById('btn-help-close').addEventListener('click', hideHelp);
+    document.getElementById('btn-settings').addEventListener('click', showSettings);
+    document.getElementById('btn-settings-close').addEventListener('click', hideSettings);
+    document.getElementById('overlay-settings').addEventListener('click', function(e) {
+        if (e.target === e.currentTarget) hideSettings();
+    });
+
+    // Settings toggles
+    document.getElementById('toggle-sound').addEventListener('change', function() {
+        var shouldMute = !this.checked;
+        if (shouldMute !== SFX.isMuted()) {
+            SFX.toggle();
+            var btn = document.getElementById('btn-mute');
+            btn.textContent = shouldMute ? '🔇' : '🔊';
+            btn.setAttribute('aria-label', shouldMute ? 'Unmute sounds' : 'Mute sounds');
+        }
+    });
+    document.getElementById('toggle-motion').addEventListener('change', function() {
+        document.body.classList.toggle('reduce-motion', !this.checked);
+        localStorage.setItem('scoundrel_motion', this.checked ? '1' : '0');
+    });
+    document.getElementById('btn-reset-data').addEventListener('click', function() {
+        if (!confirm('Reset all scores and achievements? This cannot be undone.')) return;
+        localStorage.removeItem('scoundrel_ach_v1');
+        localStorage.removeItem('scoundrel_lb_v1');
+        hideSettings();
+        log('All scores and achievements cleared.', 'log-system');
+    });
+
+    document.getElementById('btn-leaderboard').addEventListener('click', Leaderboard.show);
+    document.getElementById('btn-lb-close').addEventListener('click', Leaderboard.hide);
+    document.getElementById('overlay-leaderboard').addEventListener('click', function(e) {
+        if (e.target === e.currentTarget) Leaderboard.hide();
+    });
+    document.getElementById('btn-achievements').addEventListener('click', function() {
+        Achievements.renderOverlay();
+        document.getElementById('overlay-achievements').hidden = false;
+    });
+    document.getElementById('btn-ach-close').addEventListener('click', function() {
+        document.getElementById('overlay-achievements').hidden = true;
+    });
+    document.getElementById('overlay-achievements').addEventListener('click', function(e) {
+        if (e.target === e.currentTarget) document.getElementById('overlay-achievements').hidden = true;
+    });
+    document.getElementById('btn-mute').addEventListener('click', function() {
+        var muted = SFX.toggle();
+        this.textContent = muted ? '🔇' : '🔊';
+        this.setAttribute('aria-label', muted ? 'Unmute sounds' : 'Mute sounds');
+        // Keep settings toggle in sync
+        var t = document.getElementById('toggle-sound');
+        if (t) t.checked = !muted;
+    });
+
+    document.getElementById('btn-onboard-start').addEventListener('click', function() {
+        hideOnboarding();
+    });
+
+    // Mobile: toggle HUD controls panel
+    document.getElementById('btn-hud-toggle').addEventListener('click', function() {
+        var controls = document.getElementById('hud-controls');
+        var btn      = this;
+        var isOpen   = controls.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', String(isOpen));
+    });
 
     document.getElementById('overlay-help').addEventListener('click', function(e) {
         if (e.target === e.currentTarget) hideHelp();
@@ -686,9 +933,6 @@ function setupEvents() {
 
     document.getElementById('btn-endgame-new').addEventListener('click', function() {
         hideEndGame(); newGame();
-    });
-    document.getElementById('btn-endgame-restart').addEventListener('click', function() {
-        hideEndGame(); restartGame();
     });
     document.getElementById('overlay-endgame').addEventListener('click', function(e) {
         if (e.target === e.currentTarget) hideEndGame();
@@ -702,18 +946,24 @@ function onKeyDown(e) {
 
     var helpOpen    = !document.getElementById('overlay-help').hidden;
     var endgameOpen = !document.getElementById('overlay-endgame').hidden;
+    var lbOpen      = !document.getElementById('overlay-leaderboard').hidden;
+    var achOpen     = !document.getElementById('overlay-achievements').hidden;
 
     if (e.key === 'Escape') {
-        if (helpOpen)    { hideHelp();    return; }
-        if (endgameOpen) { hideEndGame(); return; }
+        if (helpOpen)    { hideHelp();             return; }
+        if (endgameOpen) { hideEndGame();           return; }
+        if (lbOpen)      { Leaderboard.hide();      return; }
+        if (achOpen)     { document.getElementById('overlay-achievements').hidden = true; return; }
+        if (!document.getElementById('overlay-settings').hidden) { hideSettings(); return; }
     }
 
-    if (helpOpen || endgameOpen) return;
+    if (helpOpen || endgameOpen || lbOpen || achOpen) return;
 
     var key = e.key.toUpperCase();
     if (key === 'N') { e.preventDefault(); newGame();   return; }
     if (key === 'A') { e.preventDefault(); avoidRoom(); return; }
     if (key === 'H' || e.key === '?') { e.preventDefault(); showHelp(); return; }
+    if (key === 'L') { e.preventDefault(); Leaderboard.show(); return; }
     if (e.key >= '1' && e.key <= '4') {
         e.preventDefault();
         if (!gs.isGameOver) resolveCard(Number(e.key) - 1);
@@ -727,9 +977,21 @@ function onKeyDown(e) {
 
 function init() {
     setupEvents();
+
+    // Restore motion preference
+    var motionPref = localStorage.getItem('scoundrel_motion');
+    if (motionPref === '0') document.body.classList.add('reduce-motion');
+
     var saved = loadGame();
     if (saved && !saved.isGameOver) {
         gs = saved;
+        // Resume banner
+        var banner = document.getElementById('resume-banner');
+        if (banner) {
+            banner.textContent = '↩ Run restored — Turn ' + (gs.turnCount || 1);
+            banner.hidden = false;
+            setTimeout(function() { banner.hidden = true; }, 3500);
+        }
         log('Session restored. Continue your run.', 'log-system');
         render();
         requestAnimationFrame(function() {
@@ -738,7 +1000,12 @@ function init() {
             });
         });
     } else {
-        newGame();
+        // Show onboarding only on very first visit
+        if (!localStorage.getItem(ONBOARD_KEY)) {
+            showOnboarding();
+        } else {
+            newGame();
+        }
     }
 }
 

@@ -1065,7 +1065,29 @@ function onKeyDown(e) {
   12.  INIT
 ═══════════════════════════════════════════════════════════════ */
 
+function preloadImages() {
+    // Kick off all card image fetches immediately so the browser has them
+    // cached before the first flip reveal — eliminates the image pop-in.
+    var srcs = [
+        'assets/images.jpg/club-1.jpg',
+        'assets/images.jpg/club-2.jpg',
+        'assets/images.jpg/club-3.jpg',
+        'assets/images.jpg/spade-1.png',
+        'assets/images.jpg/spade-2.jpg',
+        'assets/images.jpg/spade-3.jpg',
+        'assets/images.jpg/diamond-1.jpg',
+        'assets/images.jpg/diamond-2.jpg',
+        'assets/images.jpg/diamond-3.jpg',
+        'assets/images.jpg/heart.jpg',
+    ];
+    srcs.forEach(function(src) {
+        var img = new Image();
+        img.src = src;
+    });
+}
+
 function init() {
+    preloadImages(); // begin caching card images before the first deal
     setupEvents();
 
     // Restore motion preference

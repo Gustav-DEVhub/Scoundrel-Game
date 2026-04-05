@@ -829,23 +829,32 @@ table {
 /* ───────────────────────────────────────────────────────────────
    8. CARD FLIP ANIMATION ENTRY
 ─────────────────────────────────────────────────────────────────*/
-/* Deal drop-in — all new cards slide down together, face-down */
+/* Deal drop-in — cards dealt one by one with a slight throw rotation per card */
 @keyframes card-deal {
-  from { opacity: 0; transform: translateY(-26px) scale(0.86); }
-  to   { opacity: 1; transform: translateY(0)     scale(1);    }
+  0%   { opacity: 0; transform: translateY(-52px) scale(0.78) rotate(var(--deal-rot-start, -5deg)); }
+  68%  { opacity: 1; transform: translateY(5px)   scale(1.04) rotate(var(--deal-rot-end,   0.5deg)); }
+  100% { opacity: 1; transform: translateY(0)     scale(1)    rotate(0deg); }
 }
 .card-slot.is-dealing.is-new-deal {
-  animation: card-deal 300ms var(--ease-spring) both;
+  animation: card-deal 340ms var(--ease-spring) both;
 }
+/* Per-card stagger + fan rotation (left cards tilt left, right cards tilt right) */
+.card-slot.is-dealing.is-new-deal:nth-child(1) { animation-delay:   0ms; --deal-rot-start: -6deg; --deal-rot-end:  0.6deg; }
+.card-slot.is-dealing.is-new-deal:nth-child(2) { animation-delay:  60ms; --deal-rot-start: -2deg; --deal-rot-end:  0.2deg; }
+.card-slot.is-dealing.is-new-deal:nth-child(3) { animation-delay: 120ms; --deal-rot-start:  2deg; --deal-rot-end: -0.2deg; }
+.card-slot.is-dealing.is-new-deal:nth-child(4) { animation-delay: 180ms; --deal-rot-start:  6deg; --deal-rot-end: -0.6deg; }
 
-/* Flip reveal — fires after drop-in completes (JS setTimeout), staggered by card position */
+/* Flip reveal — pauses at 90° so the card face and image fully render before becoming visible */
 @keyframes card-flip-reveal {
-  from { transform: rotateY(0deg);   }
-  to   { transform: rotateY(180deg); }
+  0%   { transform: rotateY(0deg);   }
+  35%  { transform: rotateY(90deg);  }  /* reaches edge        */
+  55%  { transform: rotateY(90deg);  }  /* holds — image loads */
+  90%  { transform: rotateY(186deg); }  /* slight overshoot    */
+  100% { transform: rotateY(180deg); }
 }
 .card-slot.is-new-deal.is-flipped .card-inner {
-  transition: none; /* suppress default transition; animation drives it */
-  animation:  card-flip-reveal 300ms cubic-bezier(0.35, 0, 0.25, 1) both;
+  transition: none;
+  animation:  card-flip-reveal 420ms cubic-bezier(0.35, 0, 0.25, 1) both;
 }
 .card-slot.is-new-deal.is-flipped:nth-child(1) .card-inner { animation-delay:   0ms; }
 .card-slot.is-new-deal.is-flipped:nth-child(2) .card-inner { animation-delay:  90ms; }
@@ -883,7 +892,7 @@ table {
   flex-direction:  column;
   align-items:     center;
   gap:             var(--sp-2);
-  padding:         var(--sp-2) 0 var(--sp-1);
+  padding:         0 0 var(--sp-1);  /* no top padding — buttons sit flush under cards */
   /* Stable height: prevent layout shifts when button states or hints change */
   width:           100%;
   flex-shrink:     0;
@@ -1511,6 +1520,16 @@ table {
   #main-content {
     flex-direction: column;
     align-items:    center;
+    gap:            0;   /* no gap — log gets all freed space */
+  }
+
+  /* Hidden notices collapse to zero on desktop — the log (flex:1)
+     absorbs the change so no layout shift occurs. */
+  .avoid-notice[hidden],
+  .potion-notice[hidden] {
+    height:        0;
+    padding-block: 0;
+    overflow:      hidden;
   }
 
   .room-section {
@@ -1520,8 +1539,8 @@ table {
 
   .log-section {
     width:     100%;
-    max-width: 860px; /* wider than before to match bigger card grid */
-    /* flex: 1 from base makes height fill remaining space */
+    max-width: 860px;
+    padding-top: var(--sp-2); /* small breathing room above the log heading */
   }
   /* No fixed height on log-scroll — flex: 1 from base handles it */
 }
